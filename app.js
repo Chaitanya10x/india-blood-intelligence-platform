@@ -1828,7 +1828,6 @@ function initEarth() {
     animate();
   }
   flyToIndia();
-}
 function updateEarthMarkers() {
   if (!earthState.markerGroup || !window.THREE) return;
   clearEarthMarkers();
