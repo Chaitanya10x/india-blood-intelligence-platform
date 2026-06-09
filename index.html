@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>India Blood Intelligence Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow--red" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow--crimson" aria-hidden="true"></div>
+  <aside class="sidebar glass-panel" aria-label="Primary navigation">
+    <button class="brand" data-view="dashboard" aria-label="Dashboard">
+      <img src="logo.svg" alt="" class="brand-logo">
+      <span>
+        <strong>E-BLOOD BANK</strong>
+        <small>Management System</small>
+      </span>
+    </button>
+
+    <nav class="side-nav">
+      <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span>Dashboard</button>
+      <button class="nav-item" data-view="stock"><span class="nav-icon">◈</span>Blood Stock</button>
+      <button class="nav-item" data-view="donors"><span class="nav-icon">♙</span>Donors</button>
+      <button class="nav-item" data-view="hospitals"><span class="nav-icon">✚</span>Hospitals</button>
+      <button class="nav-item" data-view="requests"><span class="nav-icon">☷</span>Requests</button>
+      <button class="nav-item" data-view="network"><span class="nav-icon">⌖</span>India Network</button>
+      <button class="nav-item" data-view="marketplace"><span class="nav-icon">🛒</span>Blood Marketplace</button>
+      <button class="nav-item" data-view="analytics"><span class="nav-icon">▣</span>Analytics</button>
+      <button class="nav-item" data-view="notifications"><span class="nav-icon">◇</span>Alerts</button>
+      <button class="nav-item" data-view="users"><span class="nav-icon">◉</span>Users</button>
+      <button class="nav-item" data-view="orders"><span class="nav-icon">📋</span>Order History</button>
+      <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+      <button class="nav-item" id="logoutBtn"><span class="nav-icon">↪</span>Logout</button>
+    </nav>
+
+    <div class="mission-card donate-card">
+      <div class="donate-drop" aria-hidden="true">🩸</div>
+      <strong>Every Drop Counts</strong>
+      <p>Register as a donor and strengthen the national blood reserve network.</p>
+      <button type="button" data-action="donor">Donate Blood →</button>
+    </div>
+    <div class="sidebar-notice" id="sidebarNotice">
+      <span class="pulse-dot"></span>
+      <span id="sidebarNoticeText">You have 0 new notifications</span>
+    </div>
+  </aside>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="menu-button" id="menuButton" aria-label="Toggle menu">☰</button>
+      <label class="search">
+        <span aria-hidden="true">⌕</span>
+        <input id="globalSearch" type="search" placeholder="Search state, city, hospital, blood group...">
+        <kbd class="search-kbd">CTRL + K</kbd>
+      </label>
+      <div class="topbar-greeting">
+        <h2><span id="topbarGreeting">Good Morning</span>, <span id="topbarAdminName">Admin</span>! 👋</h2>
+        <p id="topbarDateTime">Loading date...</p>
+      </div>
+      <div class="top-actions">
+        <button class="ghost-button auth-guest" id="openLoginBtn" type="button">Login</button>
+        <button class="primary-button compact auth-guest" id="openRegisterBtn" type="button">Register</button>
+        <button class="icon-button" id="notificationBell" aria-label="Notifications">◇<span id="notificationCount">0</span></button>
+        <button class="icon-button" id="cartTopButton" data-view="cart" aria-label="Cart">▤<span id="cartCount">0</span></button>
+        <button class="icon-button" id="themeToggle" aria-label="Toggle night mode">◐</button>
+        <div class="profile">
+          <span id="profileName">Guest</span>
+          <small id="profileRole">Signed out</small>
+        </div>
+        <div class="avatar" id="profileAvatar" aria-label="User profile">?</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="dashboardView">
+        <header class="dashboard-welcome">
+          <div>
+            <h1><span id="dashboardGreeting">Good Morning</span>, <span id="dashboardAdminName">Admin</span>! 👋</h1>
+            <p id="dashboardDateTime">Loading date...</p>
+          </div>
+          <div class="dashboard-welcome-actions">
+            <button class="ghost-button" data-view="network" type="button">India Network</button>
+            <button class="primary-button" id="findNearbyHero" type="button">Find Nearby</button>
+          </div>
+        </header>
+
+        <div class="stats-grid">
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon red">🩸</span>
+            <div class="stat-body">
+              <p>Total Blood Units<strong id="totalUnits">0</strong></p>
+              <small class="trend positive" id="trendUnits">+12.5%</small>
+            </div>
+            <canvas class="stat-sparkline" id="sparkUnits" aria-hidden="true"></canvas>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon violet">♙</span>
+            <div class="stat-body">
+              <p>Total Donors<strong id="donorCount">0</strong></p>
+              <small class="trend positive" id="trendDonors">+8.2%</small>
+            </div>
+            <canvas class="stat-sparkline" id="sparkDonors" aria-hidden="true"></canvas>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon cyan">✚</span>
+            <div class="stat-body">
+              <p>Total Hospitals<strong id="hospitalCount">0</strong></p>
+              <small class="trend positive" id="trendHospitals">+5.4%</small>
+            </div>
+            <canvas class="stat-sparkline" id="sparkHospitals" aria-hidden="true"></canvas>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon amber">☷</span>
+            <div class="stat-body">
+              <p>Total Requests<strong id="totalRequests">0</strong></p>
+              <small class="trend negative" id="trendRequests">-3.1%</small>
+            </div>
+            <canvas class="stat-sparkline" id="sparkRequests" aria-hidden="true"></canvas>
+          </article>
+        </div>
+
+        <div class="dashboard-core">
+          <div class="dashboard-left">
+            <article class="panel glass-panel blood-overview-panel">
+              <div class="panel-title">
+                <h2>Blood Stock Overview</h2>
+                <button type="button" data-view="stock">Manage</button>
+              </div>
+              <div class="blood-group-grid" id="bloodGroupCards"></div>
+            </article>
+
+            <article class="panel glass-panel stock-distribution-panel">
+              <div class="panel-title">
+                <h2>Stock Distribution</h2>
+                <span class="subtle">Live inventory split</span>
+              </div>
+              <div class="stock-body">
+                <div class="chart-wrap chart-wrap--donut chart-wrap--premium">
+                  <canvas id="stockChart" aria-label="Blood stock chart"></canvas>
+                  <div class="donut-center">
+                    <strong id="donutTotal">0</strong>
+                    <span>Total Units</span>
+                  </div>
+                </div>
+                <ul class="legend legend--premium" id="stockLegend"></ul>
+              </div>
+            </article>
+          </div>
+
+          <div class="dashboard-right">
+            <article class="panel glass-panel live-panel">
+              <div class="panel-title">
+                <h2>Live Blood Network</h2>
+                <span class="live-badge"><span class="live-pulse"></span>Live</span>
+              </div>
+              <div class="live-network-stage" id="liveNetworkStage">
+                <canvas id="liveNetworkCanvas" aria-label="Live blood network visualization"></canvas>
+                <div class="network-status-bar">
+                  <span><i class="status-dot"></i>Network: <strong id="networkStatusText">Active</strong></span>
+                  <span><i class="status-dot"></i><span id="networkNodeCount">0</span> hospitals online</span>
+                  <span><i class="status-dot status-dot--amber"></i><span id="networkUnitCount">0</span> units</span>
+                </div>
+              </div>
+              <div class="live-hospital-cards" id="liveHospitalCards"></div>
+            </article>
+
+            <article class="panel glass-panel live-requests-panel">
+              <div class="panel-title">
+                <h2>Live Blood Requests</h2>
+                <button type="button" data-view="requests">View all</button>
+              </div>
+              <div class="live-requests-table-wrap">
+                <table class="live-requests-table">
+                  <thead><tr><th>Hospital</th><th>Blood</th><th>Units</th><th>Time</th><th>Status</th></tr></thead>
+                  <tbody id="liveBloodRequests"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="dashboard-bottom-grid">
+          <article class="panel glass-panel">
+            <div class="panel-title"><h2>Donation Trend</h2><span class="subtle">Last 6 months</span></div>
+            <div class="chart-wrap chart-wrap--premium"><canvas id="dashDonationChart" aria-label="Donation trend chart"></canvas></div>
+          </article>
+          <article class="panel glass-panel">
+            <div class="panel-title"><h2>Requests Overview</h2><span class="subtle">Monthly volume</span></div>
+            <div class="chart-wrap chart-wrap--premium"><canvas id="dashRequestChart" aria-label="Requests overview chart"></canvas></div>
+          </article>
+          <article class="panel glass-panel">
+            <div class="panel-title"><h2>Top Donors</h2><button type="button" data-view="donors">View all</button></div>
+            <div class="top-donors-list" id="topDonors"></div>
+          </article>
+          <article class="panel glass-panel compat-panel">
+            <div class="panel-title"><h2>Blood Compatibility</h2><span class="subtle">Transfusion guide</span></div>
+            <div class="compatibility-widget" id="compatibilityWidget"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="networkView">
+        <div class="section-head">
+          <div><span class="eyebrow">India-first discovery</span><h1>India Blood Network Earth</h1></div>
+          <div class="toolbar">
+            <button class="primary-button" id="findNearbyBtn" type="button">Find Nearby Blood Banks</button>
+            <button class="ghost-button" id="routeBtn" type="button">Route to Selected</button>
+          </div>
+        </div>
+        <div class="network-layout">
+          <section class="earth-stage glass-panel">
+            <canvas id="earthCanvas" aria-label="Interactive India blood network earth"></canvas>
+            <div class="earth-labels" id="earthLabels" aria-hidden="true"></div>
+            <div class="earth-overlay">
+              <label class="network-search"><span>⌕</span><input id="networkSearch" placeholder="Search Ahmedabad, Mumbai, O-, AIIMS..."></label>
+              <div class="zoom-levels" id="zoomLevels">
+                <button class="active" data-level="national">National</button>
+                <button data-level="state">State</button>
+                <button data-level="city">City</button>
+                <button data-level="street">Street</button>
+              </div>
+            </div>
+          </section>
+          <aside class="network-panel glass-panel">
+            <h2 id="networkTitle">National View</h2>
+            <p id="networkSummary">India is centered with high-demand states, connected hospitals, donor clusters, and low-stock zones highlighted.</p>
+            <div class="city-picker" id="networkCityPicker"></div>
+            <div class="route-card" id="routeCard" hidden></div>
+            <div class="facility-list" id="facilityList"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="stockView">
+        <div class="section-head"><h1>Blood Stock</h1><button class="primary-button" id="addStockBtn">Add Stock</button></div>
+        <div class="filter-row"><input id="stockFilter" placeholder="Filter blood group or status"><select id="stockStatusFilter"><option value="">All statuses</option><option>Healthy</option><option>Low</option><option>Critical</option></select></div>
+        <div class="table-card glass-panel"><table><thead><tr><th>Blood Group</th><th>Units</th><th>Status</th><th>Threshold</th><th>Last Updated</th><th>Actions</th></tr></thead><tbody id="stockRows"></tbody></table></div>
+      </section>
+
+      <section class="view" id="donorsView">
+        <div class="section-head"><h1>Donors</h1><button class="primary-button" id="addDonorBtn">Register Donor</button></div>
+        <div class="filter-row"><input id="donorFilter" placeholder="Search donor, city, blood group"><select id="donorGroupFilter"><option value="">All groups</option></select></div>
+        <div class="cards-list" id="donorCards"></div>
+      </section>
+
+      <section class="view" id="hospitalsView">
+        <div class="section-head"><h1>Hospitals</h1><button class="primary-button" id="addHospitalBtn">Connect Hospital</button></div>
+        <div class="filter-row"><input id="hospitalFilter" placeholder="Search hospital, city, area"><select id="hospitalStatusFilter"><option value="">All statuses</option><option>Connected</option><option>Disconnected</option></select></div>
+        <div class="cards-list" id="hospitalCards"></div>
+      </section>
+
+      <section class="view" id="requestsView">
+        <div class="section-head"><h1>Blood Requests</h1><button class="primary-button" id="addRequestBtn">Create Request</button></div>
+        <div class="filter-row"><input id="requestFilter" placeholder="Search patient, hospital, blood group"><select id="requestStatusFilter"><option value="">All statuses</option><option>Pending</option><option>Accepted</option><option>Completed</option><option>Rejected</option></select></div>
+        <div class="table-card glass-panel"><table><thead><tr><th>Patient</th><th>Blood</th><th>Units</th><th>Hospital</th><th>Status</th><th>Actions</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+      </section>
+
+      <section class="view" id="analyticsView">
+        <div class="section-head"><h1>Advanced Analytics</h1><button class="ghost-button" id="refreshAnalytics">Refresh</button></div>
+        <div class="analytics-grid">
+          <article class="panel glass-panel"><h2>Monthly Donations</h2><div class="chart-wrap chart-wrap--premium"><canvas id="donationChart" aria-label="Monthly donations chart"></canvas></div></article>
+          <article class="panel glass-panel"><h2>Request Pressure</h2><div class="chart-wrap chart-wrap--premium"><canvas id="requestChart" aria-label="Request pressure chart"></canvas></div></article>
+          <article class="panel glass-panel"><h2>Demand Heatmap</h2><div class="heatmap-grid" id="analyticsHeatmap"></div></article>
+          <article class="panel glass-panel"><h2>Forecast Window</h2><div class="forecast-rail" id="forecastRail"></div></article>
+          <article class="panel glass-panel"><h2>Hospital Statistics</h2><div class="metric-list" id="hospitalStats"></div></article>
+          <article class="panel glass-panel"><h2>Donor Statistics</h2><div class="metric-list" id="donorStats"></div></article>
+          <article class="panel glass-panel"><h2>State Demand</h2><div class="state-demand" id="stateDemand"></div></article>
+          <article class="panel glass-panel"><h2>Shortage Prediction</h2><div class="prediction-list" id="predictionList"></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="notificationsView">
+        <div class="section-head"><h1>Notification Center</h1><button class="ghost-button" id="clearNotifications" type="button">Mark Read</button></div>
+        <div class="notification-list" id="notificationList"></div>
+      </section>
+
+      <section class="view" id="usersView">
+        <div class="section-head">
+          <div><span class="eyebrow">Access control</span><h1>User Management</h1></div>
+          <button class="primary-button" id="addUserBtn" type="button">Add User</button>
+        </div>
+        <div class="filter-row">
+          <input id="userFilter" placeholder="Search user, email, role">
+          <select id="userRoleFilter"><option value="">All roles</option><option>admin</option><option>hospital</option><option>donor</option></select>
+        </div>
+        <div class="table-card glass-panel">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView">
+        <div class="section-head"><h1>Settings</h1></div>
+        <form class="settings-form glass-panel">
+          <label>Admin Name<input id="adminNameSetting" value="Admin"></label>
+          <label>Notification Email<input id="emailSetting" value="admin@eblood.local"></label>
+          <label>Low Stock Threshold<input id="thresholdSetting" type="number" value="60"></label>
+          <label><span>Demo Inventory Disclosure</span><select id="demoDisclosure"><option>Visible</option><option>Compact</option></select></label>
+          <button class="primary-button" type="button" id="saveSettings">Save Settings</button>
+        </form>
+      </section>
+
+      <section class="view" id="productView">
+        <div class="section-head">
+          <div><span class="eyebrow">Blood product</span><h1 id="productTitle">Blood Product Details</h1></div>
+          <button class="ghost-button" data-view="marketplace" type="button">← Back to Marketplace</button>
+        </div>
+        <div class="product-detail-layout" id="productDetail"></div>
+      </section>
+
+      <section class="view" id="marketplaceView">
+        <div class="section-head">
+          <div><span class="eyebrow">Buy Blood</span><h1>Blood Marketplace</h1></div>
+          <div class="toolbar">
+            <button class="ghost-button" data-view="cart" type="button">View Cart (<span id="marketCartCount">0</span>)</button>
+            <button class="primary-button" id="createMarketRequestBtn">Create Emergency Request</button>
+          </div>
+        </div>
+        
+        <div class="filter-row filter-row--marketplace">
+          <input id="marketSearch" placeholder="Search blood group, city, hospital...">
+          <select id="marketBloodFilter">
+            <option value="">All Blood Groups</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+          <select id="marketCityFilter">
+            <option value="">All Cities</option>
+          </select>
+          <select id="marketHospitalFilter">
+            <option value="">All Hospitals</option>
+          </select>
+          <select id="marketAvailabilityFilter">
+            <option value="">All Availability</option>
+            <option value="Available">Available</option>
+            <option value="Limited">Limited</option>
+            <option value="Critical">Critical</option>
+          </select>
+          <label class="toggle-filter"><input id="marketEmergencyFilter" type="checkbox">Emergency stock</label>
+        </div>
+
+        <div class="marketplace-stats">
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon red">🩸</span>
+            <p>Available Units<strong id="marketAvailableUnits">0</strong><small class="positive">Across network</small></p>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon cyan">✚</span>
+            <p>Active Hospitals<strong id="marketActiveHospitals">0</strong><small class="positive">Verified partners</small></p>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon amber">☷</span>
+            <p>Pending Requests<strong id="marketPendingRequests">0</strong><small class="negative">Awaiting allocation</small></p>
+          </article>
+          <article class="stat-card glass-panel glass-panel--glow">
+            <span class="stat-icon violet">⏱</span>
+            <p>Avg Response Time<strong id="marketResponseTime">2.4h</strong><small class="positive">Processing speed</small></p>
+          </article>
+        </div>
+
+        <div class="marketplace-grid" id="marketplaceGrid"></div>
+
+        <div class="panel glass-panel" id="requestTrackingPanel" style="display:none;">
+          <div class="panel-title"><h2>Your Blood Requests</h2><button type="button" id="closeTrackingPanel">Close</button></div>
+          <div class="table-card glass-panel"><table><thead><tr><th>Request ID</th><th>Blood Group</th><th>Units</th><th>Hospital</th><th>Status</th><th>Created</th></tr></thead><tbody id="requestTrackingRows"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="view" id="cartView">
+        <div class="section-head">
+          <div><span class="eyebrow">Allocation cart</span><h1>Blood Cart</h1></div>
+          <button class="ghost-button" data-view="marketplace" type="button">Continue Shopping</button>
+        </div>
+        <div class="commerce-layout">
+          <article class="panel glass-panel">
+            <div class="panel-title"><h2>Selected Inventory</h2><button type="button" id="clearCartBtn">Clear Cart</button></div>
+            <div class="cart-list" id="cartItems"></div>
+          </article>
+          <aside class="panel glass-panel checkout-summary">
+            <span class="eyebrow">Order summary</span>
+            <div class="summary-row"><span>Total units</span><strong id="cartTotalUnits">0</strong></div>
+            <div class="summary-row"><span>Total amount</span><strong id="cartTotalAmount">Rs 0</strong></div>
+            <button class="primary-button" id="goCheckoutBtn" type="button">Proceed to Checkout</button>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="checkoutView">
+        <div class="section-head">
+          <div><span class="eyebrow">Compatibility check</span><h1>Checkout</h1></div>
+          <button class="ghost-button" data-view="cart" type="button">Back to Cart</button>
+        </div>
+        <form class="checkout-grid" id="checkoutForm">
+          <article class="panel glass-panel form-panel">
+            <h2>Patient Details</h2>
+            <label>Name<input name="patientName" required placeholder="Patient full name"></label>
+            <label>Age<input name="patientAge" type="number" min="1" max="120" required placeholder="Age"></label>
+            <label>Blood group<select name="patientBloodGroup" required><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+            <label>Contact<input name="patientContact" required placeholder="+91 contact number"></label>
+          </article>
+          <article class="panel glass-panel form-panel">
+            <h2>Hospital Details</h2>
+            <label>Hospital<input name="hospital" id="checkoutHospital" required placeholder="Receiving hospital"></label>
+            <label>Doctor<input name="doctor" required placeholder="Doctor in charge"></label>
+            <label>Emergency status<select name="emergency"><option value="true">Emergency</option><option value="false">Standard</option></select></label>
+          </article>
+          <article class="panel glass-panel form-panel">
+            <h2>Delivery Details</h2>
+            <label>Address<input name="address" required placeholder="Delivery address"></label>
+            <label>City<input name="city" required placeholder="City"></label>
+            <label>State<input name="state" required placeholder="State"></label>
+          </article>
+          <aside class="panel glass-panel checkout-summary">
+            <span class="eyebrow">Validation</span>
+            <div id="compatibilityResult" class="compatibility-result">Select patient details to validate compatibility.</div>
+            <div class="summary-row"><span>Units</span><strong id="checkoutUnits">0</strong></div>
+            <div class="summary-row"><span>Amount</span><strong id="checkoutAmount">Rs 0</strong></div>
+            <button class="primary-button" type="submit">Continue to Payment</button>
+          </aside>
+        </form>
+      </section>
+
+      <section class="view" id="paymentView">
+        <div class="section-head">
+          <div><span class="eyebrow">Demo payment</span><h1>Payment</h1></div>
+          <button class="ghost-button" data-view="checkout" type="button">Back to Checkout</button>
+        </div>
+        <div class="commerce-layout">
+          <article class="panel glass-panel payment-card">
+            <h2>Choose Payment Method</h2>
+            <div class="payment-options" id="paymentOptions">
+              <button type="button" class="active" data-payment-method="UPI">UPI</button>
+              <button type="button" data-payment-method="Debit Card">Debit Card</button>
+              <button type="button" data-payment-method="Credit Card">Credit Card</button>
+              <button type="button" data-payment-method="Net Banking">Net Banking</button>
+            </div>
+            <div class="payment-processing" id="paymentProcessing">
+              <span></span>
+              <strong>Processing allocation payment</strong>
+              <small>Verifying compatibility, inventory hold, and request creation.</small>
+            </div>
+            <div class="payment-actions">
+              <button class="primary-button" id="payNowBtn" type="button">Pay Securely</button>
+              <button class="ghost-button" id="simulateFailureBtn" type="button">Simulate Failure</button>
+            </div>
+          </article>
+          <aside class="panel glass-panel checkout-summary">
+            <span class="eyebrow">Payable</span>
+            <div class="summary-row"><span>Payment method</span><strong id="selectedPaymentMethod">UPI</strong></div>
+            <div class="summary-row"><span>Amount</span><strong id="paymentAmount">Rs 0</strong></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="paymentSuccessView">
+        <div class="result-panel glass-panel">
+          <span class="result-mark success">✓</span>
+          <h1>Payment Successful</h1>
+          <p>Your blood allocation request has been placed and is ready for tracking.</p>
+          <div class="hero-actions">
+            <button class="primary-button" data-view="tracking" type="button">Track Order</button>
+            <button class="ghost-button" data-view="marketplace" type="button">Back to Marketplace</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="paymentFailureView">
+        <div class="result-panel glass-panel">
+          <span class="result-mark failure">!</span>
+          <h1>Payment Failed</h1>
+          <p>No inventory request was created. You can retry payment or adjust the cart.</p>
+          <div class="hero-actions">
+            <button class="primary-button" data-view="payment" type="button">Retry Payment</button>
+            <button class="ghost-button" data-view="cart" type="button">Review Cart</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="trackingView">
+        <div class="section-head">
+          <div><span class="eyebrow">Order tracking</span><h1>Allocation Timeline</h1></div>
+          <button class="ghost-button" id="advanceOrderBtn" type="button">Advance Demo Status</button>
+        </div>
+        <div class="tracking-layout">
+          <article class="panel glass-panel">
+            <div class="tracking-timeline" id="trackingTimeline"></div>
+          </article>
+          <aside class="panel glass-panel checkout-summary">
+            <span class="eyebrow">Current order</span>
+            <div id="trackingSummary" class="tracking-summary"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="ordersView">
+        <div class="section-head">
+          <div><span class="eyebrow">Purchase history</span><h1>Order History</h1></div>
+          <button class="ghost-button" data-view="marketplace" type="button">Buy Blood</button>
+        </div>
+        <div class="table-card glass-panel">
+          <table>
+            <thead><tr><th>Order ID</th><th>Patient</th><th>Blood</th><th>Units</th><th>Hospital</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+            <tbody id="orderHistoryRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <button class="floating-finder" id="floatingFinder" type="button">Find Nearby Blood Banks</button>
+
+  <div class="auth-modal" id="authModal" aria-hidden="true">
+    <div class="modal-dialog auth-dialog" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button class="modal-close" id="closeAuthModal" type="button" aria-label="Close">×</button>
+      <div class="auth-tabs">
+        <button class="auth-tab active" type="button" data-auth-mode="login">Login</button>
+        <button class="auth-tab" type="button" data-auth-mode="register">Register</button>
+      </div>
+      <form class="auth-form active" id="loginForm">
+        <h2 id="authTitle">Login</h2>
+        <p>Access protected MongoDB-backed operations.</p>
+        <label>Email<input name="email" type="email" autocomplete="email" required value="admin@eblood.local"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required value="password123"></label>
+        <button class="primary-button" type="submit">Login</button>
+        <button class="link-button" type="button" data-auth-mode="register">Create an account</button>
+      </form>
+      <form class="auth-form" id="registerForm">
+        <h2>Register</h2>
+        <p>Create an Admin, Hospital, or Donor profile.</p>
+        <label>Name<input name="name" type="text" autocomplete="name" required></label>
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" minlength="6" required></label>
+        <label>Role<select name="role"><option value="admin">Admin</option><option value="hospital">Hospital</option><option value="donor">Donor</option></select></label>
+        <button class="primary-button" type="submit">Register</button>
+        <button class="link-button" type="button" data-auth-mode="login">Already have an account?</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="auth-modal" id="entityModal" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="entityTitle">
+      <button class="modal-close" id="closeEntityModal" type="button" aria-label="Close">×</button>
+      <h2 id="entityTitle">Edit</h2>
+      <form class="entity-form" id="entityForm"></form>
+    </div>
+  </div>
+
+  <div class="toast-area" id="toastArea" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

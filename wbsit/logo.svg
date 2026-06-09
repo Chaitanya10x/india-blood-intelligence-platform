@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 120 120" role="img" aria-label="E-Blood Bank Monitor logo">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6aa6"/>
+      <stop offset="55%" stop-color="#ff2d6f"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+    <radialGradient id="gloss" cx="30%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="dropClip">
+      <path d="M60 6 C44 30 28 50 28 74 C28 98 44 114 60 114 C76 114 92 98 92 74 C92 50 76 30 60 6 Z" />
+    </clipPath>
+  </defs>
+
+  <!-- white background (clean) -->
+  <rect width="120" height="120" fill="#ffffff" rx="18"/>
+
+  <!-- subtle glow behind the drop -->
+  <g transform="translate(0,0)" filter="url(#outerGlow)">
+    <path d="M60 6 C44 30 28 50 28 74 C28 98 44 114 60 114 C76 114 92 98 92 74 C92 50 76 30 60 6 Z"
+          fill="url(#g)" opacity="0.92"/>
+  </g>
+
+  <!-- main drop with gradient -->
+  <path d="M60 6 C44 30 28 50 28 74 C28 98 44 114 60 114 C76 114 92 98 92 74 C92 50 76 30 60 6 Z"
+        fill="url(#g)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+
+  <!-- glassy highlight -->
+  <path d="M42 20 C48 14 72 12 82 24 C86 30 82 34 70 40 C60 44 48 40 42 36 C40 34 38 26 42 20 Z"
+        fill="url(#gloss)" opacity="0.9"/>
+
+  <!-- inner white cross (medical) -->
+  <g clip-path="url(#dropClip)">
+    <rect x="54" y="46" width="12" height="28" rx="2" fill="#ffffff" opacity="0.98"/>
+    <rect x="46" y="58" width="28" height="12" rx="2" fill="#ffffff" opacity="0.98"/>
+  </g>
+
+  <!-- soft outer ring for subtle halo -->
+  <circle cx="60" cy="60" r="46" fill="none" stroke="#ff6aa6" stroke-opacity="0.06" stroke-width="6" />
+
+</svg>
