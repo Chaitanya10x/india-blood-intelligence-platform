@@ -1,10 +1,5 @@
 function resolveApiBase() {
-  if (window.API_BASE) return window.API_BASE;
-  const backendOrigin = "https://india-blood-intelligence-platform.onrender.com";
-  const isLocalFrontend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
-  const isBackendOrigin = window.location.hostname === "localhost" && window.location.port === "5000";
-  if (window.location.protocol === "file:" || (isLocalFrontend && !isBackendOrigin)) return `${backendOrigin}/api`;
-  return "/api";
+  return "https://india-blood-intelligence-platform.onrender.com/api";
 }
 
 const API_BASE = resolveApiBase();
@@ -840,9 +835,9 @@ function renderMarketplace() {
 function renderRequestTracking() {
   const container = document.getElementById("requestTrackingRows");
   if (!container) return;
-  
+
   const userRequests = requests.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
-  
+
   container.innerHTML = userRequests.map((item) => `
     <tr>
       <td><strong>${item._id?.slice(-8) || "N/A"}</strong></td>
@@ -1601,13 +1596,13 @@ function flyToLocation(target, zoom = "city") {
   const lat = Number(target.lat ?? CITY_COORDS[target.city]?.lat ?? 22.5);
   const targetY = -(lng + Math.PI);
   console.log("targetY =", targetY);
-const targetX = Math.max(-0.22, Math.min(0.28, (lat - 20) * 0.012));
-const cameraZ = {
-  national: 4.4,
-  state: 3.7,
-  city: 3.05,
-  street: 2.85
-}[zoom] || 4.4;
+  const targetX = Math.max(-0.22, Math.min(0.28, (lat - 20) * 0.012));
+  const cameraZ = {
+    national: 4.4,
+    state: 3.7,
+    city: 3.05,
+    street: 2.85
+  }[zoom] || 4.4;
   if (window.gsap) {
     console.log("CITY", target.city);
     console.log("LAT", lat);
@@ -1639,29 +1634,29 @@ function renderCityPanel(facility) {
   `).join("");
 }
 function selectCity(city) {
-    const facility =
-        getNetworkMarkers().find(item => item.city === city) ||
-        INDIA_LOCATIONS.find(item => item.city === city);
+  const facility =
+    getNetworkMarkers().find(item => item.city === city) ||
+    INDIA_LOCATIONS.find(item => item.city === city);
 
-    if (!facility) return;
+  if (!facility) return;
 
-    selectedFacility = facility;
+  selectedFacility = facility;
 
-    if (!document.getElementById("networkView").classList.contains("active")) {
-        setView("network");
-    }
+  if (!document.getElementById("networkView").classList.contains("active")) {
+    setView("network");
+  }
 
-    markSelectedCity(facility.city);
+  markSelectedCity(facility.city);
 
-    document.querySelectorAll("#zoomLevels button").forEach(node =>
-        node.classList.toggle("active", node.dataset.level === "city")
-    );
+  document.querySelectorAll("#zoomLevels button").forEach(node =>
+    node.classList.toggle("active", node.dataset.level === "city")
+  );
 
-    flyToLocation(facility, "city");
+  flyToLocation(facility, "city");
 
-    showToast(`${facility.city} city network selected`);
+  showToast(`${facility.city} city network selected`);
 }
-  function markerFromIntersection(intersection) {
+function markerFromIntersection(intersection) {
   let object = intersection?.object;
   while (object && !earthState.markers.includes(object)) object = object.parent;
   return object || null;
@@ -1807,27 +1802,27 @@ function initEarth() {
     function animate() {
       requestAnimationFrame(animate);
       if (!isNetworkViewActive()) return;
-     if (!dragging && !selectedFacility) {
-      globe.rotation.y += 0.0008;
-       }
-}
-      if (earthState.clouds) earthState.clouds.rotation.y += 0.00025;
-      const now = Date.now();
-      earthState.markers.forEach((marker, index) => {
-        const emphasis = marker.userData.selected ? 1.34 : marker.userData.hovered ? 1.18 : 1;
-        const pulse = emphasis * (1 + Math.sin(now / 260 + index) * 0.1);
-        marker.scale.setScalar(pulse);
-      });
-      earthState.frame = (earthState.frame + 1) % 3;
-      if (earthState.frame === 0 || earthState.labelDirty) {
-        syncEarthLabels();
-        earthState.labelDirty = false;
+      if (!dragging && !selectedFacility) {
+        globe.rotation.y += 0.0008;
       }
-      renderer.render(scene, camera);
     }
-    animate();
+    if (earthState.clouds) earthState.clouds.rotation.y += 0.00025;
+    const now = Date.now();
+    earthState.markers.forEach((marker, index) => {
+      const emphasis = marker.userData.selected ? 1.34 : marker.userData.hovered ? 1.18 : 1;
+      const pulse = emphasis * (1 + Math.sin(now / 260 + index) * 0.1);
+      marker.scale.setScalar(pulse);
+    });
+    earthState.frame = (earthState.frame + 1) % 3;
+    if (earthState.frame === 0 || earthState.labelDirty) {
+      syncEarthLabels();
+      earthState.labelDirty = false;
+    }
+    renderer.render(scene, camera);
   }
-  flyToIndia();
+  animate();
+}
+flyToIndia();
 function updateEarthMarkers() {
   if (!earthState.markerGroup || !window.THREE) return;
   clearEarthMarkers();
@@ -1982,7 +1977,7 @@ function showDonorProfile(id) {
   openEntityModal("Donor Profile", [
     { label: "Name", name: "name", value: donor.name, required: false },
     { label: "History", name: "history", value: `${donor.bloodGroup} donor in ${donor.city}. Last activity ${timeAgo(donor.updatedAt)}. Demo donation history: 3 successful donations.`, required: false }
-  ], "Close", async () => {});
+  ], "Close", async () => { });
 }
 function showHospitalProfile(id) {
   const hospital = hospitals.find((item) => item._id === id);
@@ -1990,7 +1985,7 @@ function showHospitalProfile(id) {
   openEntityModal("Hospital Profile", [
     { label: "Name", name: "name", value: hospital.name, required: false },
     { label: "Network Summary", name: "summary", value: `${hospital.area}, ${hospital.city}. Status: ${hospital.status}. Demo inventory connected to national network.`, required: false }
-  ], "Close", async () => {});
+  ], "Close", async () => { });
 }
 
 function distanceKm(a, b) {
@@ -2245,7 +2240,7 @@ function wireEvents() {
     showToast("Settings saved");
     await loadData();
   });
-  
+
   // Marketplace event listeners
   document.getElementById("createMarketRequestBtn").addEventListener("click", () => {
     openEntityModal("Create Blood Request", requestFields(), "Submit Request", async (data) => {
@@ -2317,14 +2312,14 @@ function wireEvents() {
 function populateFilters() {
   const donorGroupFilter = document.getElementById("donorGroupFilter");
   donorGroupFilter.innerHTML = `<option value="">All groups</option>${BLOOD_GROUPS.map((group) => `<option>${group}</option>`).join("")}`;
-  
+
   // Populate marketplace filters
   const marketCityFilter = document.getElementById("marketCityFilter");
   const marketHospitalFilter = document.getElementById("marketHospitalFilter");
-  
+
   const cities = [...new Set([...hospitals.map((h) => h.city).filter(Boolean), ...REQUIRED_CITY_NAMES])];
   marketCityFilter.innerHTML = `<option value="">All Cities</option>${cities.map((city) => `<option>${city}</option>`).join("")}`;
-  
+
   const hospitalNames = [...new Set(marketplaceHospitalPool().map((h) => h.name).filter(Boolean))];
   marketHospitalFilter.innerHTML = `<option value="">All Hospitals</option>${hospitalNames.map((name) => `<option>${name}</option>`).join("")}`;
   renderCityPicker();
