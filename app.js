@@ -1661,7 +1661,7 @@ function selectCity(city) {
 
     showToast(`${facility.city} city network selected`);
 }
-  arkerFromIntersection(intersection) {
+  function markerFromIntersection(intersection) {
   let object = intersection?.object;
   while (object && !earthState.markers.includes(object)) object = object.parent;
   return object || null;
