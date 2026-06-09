@@ -1,6 +1,6 @@
 function resolveApiBase() {
   if (window.API_BASE) return window.API_BASE;
-  const backendOrigin = "http://localhost:5000";
+  const backendOrigin = "https://india-blood-intelligence-platform.onrender.com";
   const isLocalFrontend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
   const isBackendOrigin = window.location.hostname === "localhost" && window.location.port === "5000";
   if (window.location.protocol === "file:" || (isLocalFrontend && !isBackendOrigin)) return `${backendOrigin}/api`;
