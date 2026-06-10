@@ -1594,7 +1594,7 @@ function flyToLocation(target, zoom = "city") {
   if (!target || !earthState.globe || !earthState.camera) return;
   const lng = Number(target.lng ?? CITY_COORDS[target.city]?.lng ?? 78.9629) * Math.PI / 180;
   const lat = Number(target.lat ?? CITY_COORDS[target.city]?.lat ?? 22.5);
-  const targetY = lng - Math.PI / 2;
+  const targetY = -lng - Math.PI / 2;
   const targetX = -(lat * Math.PI / 180) * 0.9;
   const cameraZ = { national: 4.4, state: 3.7, city: 3.05, street: 2.85 }[zoom] || 4.4;
   if (window.gsap) {
@@ -1823,7 +1823,7 @@ function resizeEarth() {
 function flyToIndia() {
   if (!earthState.globe) return;
   const indiaLng = 78.9629 * Math.PI / 180;
-  const targetY = -(indiaLng + Math.PI);
+  const targetY = -indiaLng - Math.PI / 2;
   const destination = 4.4;
   if (window.gsap) {
     gsap.to(earthState.globe.rotation, { y: targetY, x: 0.12, duration: 1.3, ease: "power3.inOut" });

@@ -1,5 +1,10 @@
 function resolveApiBase() {
-  return "https://india-blood-intelligence-platform.onrender.com/api";
+  if (window.API_BASE) return window.API_BASE;
+  const backendOrigin = "http://localhost:5000";
+  const isLocalFrontend = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+  const isBackendOrigin = isLocalFrontend && window.location.port === "5000";
+  if (window.location.protocol === "file:" || (isLocalFrontend && !isBackendOrigin)) return `${backendOrigin}/api`;
+  return "/api";
 }
 
 const API_BASE = resolveApiBase();
@@ -1587,15 +1592,9 @@ function markSelectedCity(city) {
 }
 function flyToLocation(target, zoom = "city") {
   if (!target || !earthState.globe || !earthState.camera) return;
-  console.log("=== FLY TO LOCATION ===");
-  console.log("TARGET", target);
-  console.log("CITY", target?.city);
-  console.log("LAT", target?.lat);
-  console.log("LNG", target?.lng);
   const lng = Number(target.lng ?? CITY_COORDS[target.city]?.lng ?? 78.9629) * Math.PI / 180;
   const lat = Number(target.lat ?? CITY_COORDS[target.city]?.lat ?? 22.5);
-  const targetY = -(lng + Math.PI);
-  console.log("targetY =", targetY);
+  const targetY = -lng - Math.PI / 2;
   const targetX = Math.max(-0.22, Math.min(0.28, (lat - 20) * 0.012));
   const cameraZ = {
     national: 4.4,
@@ -1604,11 +1603,6 @@ function flyToLocation(target, zoom = "city") {
     street: 2.85
   }[zoom] || 4.4;
   if (window.gsap) {
-    console.log("CITY", target.city);
-    console.log("LAT", lat);
-    console.log("LNG", lng);
-    console.log("targetX", targetX);
-    console.log("targetY", targetY);
     gsap.killTweensOf([earthState.globe.rotation, earthState.camera.position]);
     gsap.to(earthState.globe.rotation, { y: targetY, x: targetX, duration: 1.15, ease: "power3.inOut", overwrite: true, onUpdate: () => { earthState.labelDirty = true; } });
     gsap.to(earthState.camera.position, { z: cameraZ, duration: 1.15, ease: "power3.inOut", overwrite: true, onUpdate: () => { earthState.labelDirty = true; } });
@@ -1681,7 +1675,7 @@ function initEarth() {
   const canvas = document.getElementById("earthCanvas");
   if (!canvas || earthState.initialized) return;
   if (!window.THREE) {
-    drawFallbackEarth(canvas);
+    // drawFallbackEarth(canvas);
     return;
   }
   const scene = new THREE.Scene();
@@ -1805,24 +1799,24 @@ function initEarth() {
       if (!dragging && !selectedFacility) {
         globe.rotation.y += 0.0008;
       }
+      if (earthState.clouds) earthState.clouds.rotation.y += 0.00025;
+      const now = Date.now();
+      earthState.markers.forEach((marker, index) => {
+        const emphasis = marker.userData.selected ? 1.34 : marker.userData.hovered ? 1.18 : 1;
+        const pulse = emphasis * (1 + Math.sin(now / 260 + index) * 0.1);
+        marker.scale.setScalar(pulse);
+      });
+      earthState.frame = (earthState.frame + 1) % 3;
+      if (earthState.frame === 0 || earthState.labelDirty) {
+        syncEarthLabels();
+        earthState.labelDirty = false;
+      }
+      renderer.render(scene, camera);
     }
-    if (earthState.clouds) earthState.clouds.rotation.y += 0.00025;
-    const now = Date.now();
-    earthState.markers.forEach((marker, index) => {
-      const emphasis = marker.userData.selected ? 1.34 : marker.userData.hovered ? 1.18 : 1;
-      const pulse = emphasis * (1 + Math.sin(now / 260 + index) * 0.1);
-      marker.scale.setScalar(pulse);
-    });
-    earthState.frame = (earthState.frame + 1) % 3;
-    if (earthState.frame === 0 || earthState.labelDirty) {
-      syncEarthLabels();
-      earthState.labelDirty = false;
-    }
-    renderer.render(scene, camera);
+    animate();
   }
-  animate();
+  flyToIndia();
 }
-flyToIndia();
 function updateEarthMarkers() {
   if (!earthState.markerGroup || !window.THREE) return;
   clearEarthMarkers();
@@ -1849,7 +1843,7 @@ function resizeEarth() {
 function flyToIndia() {
   if (!earthState.globe) return;
   const indiaLng = 78.9629 * Math.PI / 180;
-  const targetY = -indiaLng + Math.PI / 2;
+  const targetY = -indiaLng - Math.PI / 2;
   const destination = 4.4;
   if (window.gsap) {
     gsap.to(earthState.globe.rotation, { y: targetY, x: 0.12, duration: 1.3, ease: "power3.inOut" });
