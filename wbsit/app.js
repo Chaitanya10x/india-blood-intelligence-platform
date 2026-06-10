@@ -1279,7 +1279,14 @@ function renderAll() {
   updateEarthMarkers();
   renderMarketplace();
   renderOrderHistory();
-  if (window.gsap) gsap.from(".stat-card, .panel, .", { opacity: 0, y: 10, stagger: 0.03, duration: 0.35, ease: "power2.out" });
+  if (window.gsap)
+  gsap.from(".stat-card, .panel", {
+    opacity: 0,
+    y: 10,
+    stagger: 0.03,
+    duration: 0.35,
+    ease: "power2.out"
+  });
 }
 
 function chartColors(items) {
