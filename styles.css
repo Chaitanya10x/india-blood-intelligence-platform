@@ -537,7 +537,7 @@ h2 { font-size: 17px; letter-spacing: 0; font-weight: 800; }
 .negative { color: #ff8999; }
 
 /* ── Panels ── */
-.panel, .table-card, .settings-form, .stat-card { /* inherit glass via class */ }
+ /* inherit glass via class */ 
 .panel { padding: 20px; }
 .panel-title, .section-head {
   display: flex;
