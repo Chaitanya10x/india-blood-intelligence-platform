@@ -40,11 +40,7 @@ npm install
 
 3. Update `.env`:
 
-```env
-PORT=5000
-MONGODB_URI=mongodb+srv://chaitanyalimkar5_db_user:gqBaO16Gsh0z1pt3@cluster0.janyp4j.mongodb.net/?appName=Cluster0
-JWT_SECRET=replace-this-with-a-long-random-secret
-CLIENT_ORIGIN=http://localhost:5000
+
 ```
 
 4. Start the server:
