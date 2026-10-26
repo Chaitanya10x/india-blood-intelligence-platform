@@ -79,6 +79,7 @@ let selectedPaymentMethod = "UPI";
 let selectedCompatGroup = "O+";
 let selectedProductId = null;
 let resizeRaf = null;
+let clockTimer = null;
 
 function token() { return sessionStorage.getItem(AUTH_KEY); }
 function currentUser() {
@@ -158,29 +159,35 @@ function updateAuthUI(user = currentUser()) {
   document.body.classList.toggle("is-authed", isAuthed);
   document.querySelectorAll(".auth-guest").forEach((node) => { node.hidden = isAuthed; });
   document.getElementById("logoutBtn").hidden = !isAuthed;
-  document.getElementById("profileName").textContent = isAuthed ? user.name : "Guest";
+  const displayName = isAuthed && typeof user.name === "string" && user.name.trim() ? user.name.trim() : "";
+  document.getElementById("profileName").textContent = displayName || "Guest";
   document.getElementById("profileRole").textContent = isAuthed ? user.role : "Signed out";
-  document.getElementById("profileAvatar").textContent = isAuthed ? user.name.charAt(0).toUpperCase() : "?";
-  const firstName = isAuthed ? user.name.split(" ")[0] : "Admin";
+  document.getElementById("profileAvatar").textContent = displayName ? displayName.charAt(0).toUpperCase() : "?";
+  const firstName = displayName ? displayName.split(/\s+/)[0] : "";
   const topbarName = document.getElementById("topbarAdminName");
-  if (topbarName) topbarName.textContent = firstName;
+  if (topbarName) topbarName.textContent = firstName || "there";
   const dashName = document.getElementById("dashboardAdminName");
-  if (dashName) dashName.textContent = firstName;
-  const dashGreeting = document.getElementById("dashboardGreeting");
-  if (dashGreeting) dashGreeting.textContent = getGreeting();
+  if (dashName) dashName.textContent = firstName || "there";
+  const greeting = isAuthed ? getGreeting() : "Welcome Back";
+  ["dashboardGreeting", "topbarGreeting"].forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = greeting;
+  });
 }
 function getGreeting() {
   const hour = new Date().getHours();
+  if (hour < 5) return "Good Night";
   if (hour < 12) return "Good Morning";
   if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (hour < 21) return "Good Evening";
+  return "Good Night";
 }
 function updateDateTime() {
   const now = new Date();
   const day = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const time = now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
   const stamp = `${day} | ${time}`;
-  const greeting = getGreeting();
+  const greeting = currentUser() ? getGreeting() : "Welcome Back";
   ["topbarDateTime", "dashboardDateTime"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.textContent = stamp;
@@ -2022,7 +2029,8 @@ async function init() {
   wireEvents();
   updateAuthUI();
   updateDateTime();
-  window.setInterval(updateDateTime, 60000);
+  if (clockTimer) window.clearInterval(clockTimer);
+  clockTimer = window.setInterval(updateDateTime, 60000);
   initMap();
   initLiveNetwork();
   resizeLiveNetwork();
