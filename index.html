@@ -22,7 +22,7 @@
       </span>
     </button>
 
-    <nav class="side-nav">
+    <nav class="side-nav" id="primary-navigation">
       <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span>Dashboard</button>
       <button class="nav-item" data-view="stock"><span class="nav-icon">◈</span>Blood Stock</button>
       <button class="nav-item" data-view="donors"><span class="nav-icon">♙</span>Donors</button>
@@ -34,7 +34,6 @@
       <button class="nav-item" data-view="notifications"><span class="nav-icon">◇</span>Alerts</button>
       <button class="nav-item" data-view="users"><span class="nav-icon">◉</span>Users</button>
       <button class="nav-item" data-view="orders"><span class="nav-icon">📋</span>Order History</button>
-      <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
       <button class="nav-item" id="logoutBtn"><span class="nav-icon">↪</span>Logout</button>
     </nav>
 
@@ -53,7 +52,7 @@
 
   <div class="app-shell">
     <header class="topbar">
-      <button class="menu-button" id="menuButton" aria-label="Toggle menu">☰</button>
+      <button class="menu-button" id="menuButton" aria-label="Toggle menu" aria-expanded="false" aria-controls="primary-navigation">☰</button>
       <label class="search">
         <span aria-hidden="true">⌕</span>
         <input id="globalSearch" type="search" placeholder="Search state, city, hospital, blood group...">

@@ -269,6 +269,7 @@ function setView(name) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${name}View`));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
+  document.getElementById("menuButton")?.setAttribute("aria-expanded", "false");
   if (name === "network") requestAnimationFrame(() => { resizeMap(); if (!mapState.locationRequested) requestMapLocation().catch(() => {}); });
   if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); renderCharts(); resizeLiveNetwork(); drawStatSparklines(); });
   if (name === "product" && selectedProductId) renderProductDetail(selectedProductId);
@@ -1747,10 +1748,29 @@ function drawRoute() {
 
 function wireEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
-  document.getElementById("menuButton").addEventListener("click", () => document.body.classList.toggle("menu-open"));
-  document.getElementById("mobileBackdrop").addEventListener("click", () => document.body.classList.remove("menu-open"));
+  document.getElementById("menuButton").addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = document.body.classList.toggle("menu-open");
+    event.currentTarget.setAttribute("aria-expanded", String(isOpen));
+  });
+  document.getElementById("mobileBackdrop").addEventListener("click", () => {
+    document.body.classList.remove("menu-open");
+    document.getElementById("menuButton").setAttribute("aria-expanded", "false");
+  });
+  document.addEventListener("click", (event) => {
+    if (!document.body.classList.contains("menu-open")) return;
+    const sidebar = document.querySelector(".sidebar");
+    const menuButton = document.getElementById("menuButton");
+    if (!sidebar?.contains(event.target) && event.target !== menuButton) {
+      document.body.classList.remove("menu-open");
+      menuButton?.setAttribute("aria-expanded", "false");
+    }
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") document.body.classList.remove("menu-open");
+    if (event.key === "Escape") {
+      document.body.classList.remove("menu-open");
+      document.getElementById("menuButton")?.setAttribute("aria-expanded", "false");
+    }
   });
   document.getElementById("themeToggle").addEventListener("click", () => document.body.classList.toggle("soft-mode"));
   document.getElementById("openLoginBtn").addEventListener("click", () => openAuthModal("login"));
