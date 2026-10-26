@@ -49,6 +49,7 @@
       <span id="sidebarNoticeText">You have 0 new notifications</span>
     </div>
   </aside>
+  <div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
 
   <div class="app-shell">
     <header class="topbar">
@@ -206,7 +207,7 @@
 
       <section class="view" id="networkView">
         <div class="section-head">
-          <div><span class="eyebrow">India-first discovery</span><h1>India Blood Network Earth</h1></div>
+          <div><span class="eyebrow">India-first discovery</span><h1>India Blood Network</h1></div>
           <div class="toolbar">
             <button class="primary-button" id="findNearbyBtn" type="button">Find Nearby Blood Banks</button>
             <button class="ghost-button" id="routeBtn" type="button">Route to Selected</button>
@@ -214,8 +215,7 @@
         </div>
         <div class="network-layout">
           <section class="earth-stage glass-panel">
-            <canvas id="earthCanvas" aria-label="Interactive India blood network earth"></canvas>
-            <div class="earth-labels" id="earthLabels" aria-hidden="true"></div>
+            <div id="indiaMap" aria-label="Interactive map of India"></div>
             <div class="earth-overlay">
               <label class="network-search"><span>⌕</span><input id="networkSearch" placeholder="Search Ahmedabad, Mumbai, O-, AIIMS..."></label>
               <div class="zoom-levels" id="zoomLevels">
@@ -223,6 +223,7 @@
                 <button data-level="state">State</button>
                 <button data-level="city">City</button>
                 <button data-level="street">Street</button>
+                <button data-map-reset="true" type="button">Reset</button>
               </div>
             </div>
           </section>
@@ -553,7 +554,11 @@
 
   <div class="toast-area" id="toastArea" aria-live="polite"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="app.js"></script>

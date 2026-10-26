@@ -170,7 +170,10 @@ input:focus, select:focus {
     0 0 48px rgba(255, 48, 79, 0.12);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
+  overflow-y: auto;
 }
+
+.mobile-backdrop { display: none; }
 
 .brand {
   display: flex;
@@ -1081,7 +1084,19 @@ h2 { font-size: 17px; letter-spacing: 0; font-weight: 800; }
     radial-gradient(circle at 50% 48%, rgba(255,48,79,.14), transparent 42%),
     #030303;
 }
-#earthCanvas { display: block; width: 100%; height: 100%; min-height: calc(100vh - 170px); touch-action: none; }
+#indiaMap { width: 100%; height: 100%; min-height: calc(100vh - 170px); background: #10151b; touch-action: pan-x pan-y; }
+.leaflet-container { font: inherit; background: #10151b; }
+.leaflet-control-zoom a { color: #f4f6fb; background: rgba(7,10,15,.92); border-color: rgba(255,255,255,.12); }
+.leaflet-control-zoom a:hover { color: #fff; background: rgba(239,35,60,.78); }
+.leaflet-control-attribution { background: rgba(4,7,10,.78) !important; color: #9aa2b2; }
+.leaflet-control-attribution a { color: #ff9cac; }
+.map-marker { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: #ef233c; box-shadow: 0 0 0 5px rgba(239,35,60,.24), 0 0 22px rgba(239,35,60,.7); }
+.map-marker.selected { transform: scale(1.25); }
+.map-marker.closed { background: #ffb000; box-shadow: 0 0 0 5px rgba(255,176,0,.2), 0 0 22px rgba(255,176,0,.6); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0b1017; color: #f4f6fb; border: 1px solid rgba(255,255,255,.12); }
+.leaflet-popup-content { margin: 14px 16px; line-height: 1.45; }
+.map-popup strong, .map-popup span, .map-popup small { display: block; }
+.map-popup span, .map-popup small { color: #9aa2b2; margin-top: 4px; }
 .earth-labels {
   position: absolute;
   inset: 0;
@@ -1614,7 +1629,7 @@ td { color: #d8dde8; }
   .section-head { flex-direction: column; align-items: flex-start; }
   .toolbar { width: 100%; }
   .earth-overlay { position: static; padding: 14px; flex-direction: column; background: rgba(0,0,0,.4); }
-  .earth-stage, #earthCanvas { min-height: 400px; }
+  .earth-stage, #indiaMap { min-height: 400px; }
   .floating-finder { left: 14px; right: 14px; }
   .top-actions .auth-guest { display: none; }
   .live-hospital-cards { max-height: 160px; }
@@ -2075,11 +2090,25 @@ table td {
 }
 
 @media (max-width: 820px) {
+  body { overflow-x: hidden; }
   .sidebar {
     inset: 10px auto 10px 10px;
+    width: min(290px, calc(100vw - 34px));
+    max-height: calc(100vh - 20px);
     border: 1px solid rgba(255,255,255,.1);
     border-radius: 12px;
   }
+  .mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: block;
+    background: rgba(0,0,0,.62);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  body.menu-open .mobile-backdrop { opacity: 1; pointer-events: auto; }
   .app-shell { margin-left: 0; }
   .topbar { padding: 12px; }
   main { padding: 0 12px 92px; }
@@ -2091,8 +2120,15 @@ table td {
   }
   .live-network-stage,
   .earth-stage,
-  #earthCanvas {
+  #indiaMap {
     min-height: 430px;
+  }
+  main { padding-bottom: 132px; }
+  .floating-finder {
+    right: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 28px);
+    white-space: normal;
   }
 }
 .facility {

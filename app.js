@@ -70,23 +70,7 @@ let requestChart;
 let dashDonationChart;
 let dashRequestChart;
 let liveNetworkState = { animId: null, nodes: [], connections: [], width: 0, height: 0, dpr: 1 };
-let earthState = {
-  renderer: null,
-  scene: null,
-  camera: null,
-  globe: null,
-  markerGroup: null,
-  clouds: null,
-  markers: [],
-  labelEntries: [],
-  fallbackTimer: null,
-  initialized: false,
-  animating: false,
-  selectedCity: "",
-  hoveredMarker: null,
-  selectedMarker: null,
-  frame: 0
-};
+let mapState = { map: null, markers: null, markerByCity: new Map(), selectedCity: "", initialized: false };
 let marketplaceCart = [];
 let marketplaceState = { items: [] };
 let checkoutDraft = null;
@@ -274,8 +258,8 @@ function setView(name) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${name}View`));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
-  if (name === "network") requestAnimationFrame(resizeEarth);
-  if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); resizeLiveNetwork(); drawStatSparklines(); syncEarthLabels(); });
+  if (name === "network") requestAnimationFrame(resizeMap);
+  if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); resizeLiveNetwork(); drawStatSparklines(); });
   if (name === "product" && selectedProductId) renderProductDetail(selectedProductId);
   if (name === "orders") renderOrderHistory();
   if (window.gsap) gsap.from(`#${name}View`, { opacity: 0, y: 12, duration: 0.35, ease: "power2.out" });
@@ -1276,7 +1260,7 @@ function renderAll() {
   renderCompatibility();
   renderLiveBloodRequests();
   renderLiveHospitalCards();
-  updateEarthMarkers();
+  updateMapMarkers();
   renderMarketplace();
   renderOrderHistory();
   if (window.gsap)
@@ -1410,495 +1394,86 @@ function drawFallbackCharts() {
   });
 }
 
-function latLngToVector3(lat, lng, radius = 2.02) {
-  const phi = (90 - lat) * Math.PI / 180;
-  const theta = (lng + 180) * Math.PI / 180;
-  return new THREE.Vector3(-radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta));
-}
-const EARTH_TEXTURES = {
-  map: "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/earth_atmos_2048.jpg",
-  normal: "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/earth_normal_2048.jpg",
-  specular: "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/earth_specular_2048.jpg",
-  clouds: "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/earth_clouds_1024.png"
-};
-function getNetworkMarkers() {
-  const byCity = new Map();
-  const totalStock = stock.reduce((sum, item) => sum + Number(item.units || 0), 0);
-  const addMarker = (facility) => {
-    const city = facility.city || "Delhi";
-    const coords = CITY_COORDS[city] || { lat: facility.lat || CITY_COORDS.Delhi.lat, lng: facility.lng || CITY_COORDS.Delhi.lng };
-    const existing = byCity.get(city);
-    const units = Number(facility.units || facility.stock || 0);
-    if (existing) {
-      existing.units += units;
-      existing.hospitals += facility.type === "Hospital" ? 1 : 0;
-      existing.open = existing.open || facility.open !== false;
-      existing.names.push(facility.name);
-      return;
-    }
-    byCity.set(city, {
-      name: `${city} Blood Network`,
-      city,
-      state: facility.state || "India",
-      type: "City Network",
-      lat: coords.lat,
-      lng: coords.lng,
-      groups: facility.groups || BLOOD_GROUPS,
-      units: units || Math.floor(totalStock / Math.max(hospitals.length || INDIA_LOCATIONS.length, 1)) || facility.units || 0,
-      phone: facility.phone || facility.contactPhone || "",
-      address: facility.address || facility.area || city,
-      open: facility.open !== false,
-      hospitals: facility.type === "Hospital" ? 1 : 0,
-      names: [facility.name]
-    });
-  };
+const INDIA_MAP_BOUNDS = [[8, 68], [37.5, 97.5]];
+const INDIA_MAP_LIMITS = [[5.5, 65.5], [39.5, 100]];
 
-  if (hospitals.length) {
-    hospitals.forEach((hospital) => addMarker({
-      ...hospital,
-      type: "Hospital",
-      open: hospital.status === "Connected",
-      units: hospital.stock
-    }));
+function mapMarkerIcon(facility, selected = false) {
+  const className = `map-marker${facility.open === false ? " closed" : ""}${selected ? " selected" : ""}`;
+  return L.divIcon({ className: "", html: `<span class="${className}"></span>`, iconSize: [18, 18], iconAnchor: [9, 9], popupAnchor: [0, -10] });
+}
+function fitIndia() {
+  if (!mapState.map) return;
+  mapState.map.fitBounds(INDIA_MAP_BOUNDS, { padding: [24, 24], maxZoom: 5, animate: true });
+  mapState.selectedCity = "";
+  renderCityPicker();
+}
+function mapPopup(facility) {
+  return `<div class="map-popup"><strong>${escapeHtml(facility.name || `${facility.city} Blood Network`)}</strong><span>${escapeHtml(facility.city || "India")}, ${escapeHtml(facility.state || "")}</span><small>${escapeHtml(facility.address || facility.area || "Network facility")}</small><small>${Number(facility.units || 0).toLocaleString("en-IN")} units • ${facility.open === false ? "Limited" : "Connected"}</small>${facility.phone ? `<small>${escapeHtml(facility.phone)}</small>` : ""}</div>`;
+}
+function updateMapMarkers() {
+  if (!mapState.map || !window.L) return;
+  if (mapState.markers) mapState.markers.clearLayers();
+  mapState.markerByCity.clear();
+  const facilities = getNetworkMarkers().filter((facility) => Number.isFinite(Number(facility.lat)) && Number.isFinite(Number(facility.lng)));
+  if (!facilities.length) {
+    document.getElementById("networkSummary").textContent = "No mapped blood banks or hospitals are available yet.";
+    return;
   }
-  INDIA_LOCATIONS.forEach(addMarker);
-
-  return Array.from(byCity.values()).sort((a, b) => {
-    const rankA = REQUIRED_CITY_NAMES.indexOf(a.city);
-    const rankB = REQUIRED_CITY_NAMES.indexOf(b.city);
-    if (rankA !== -1 || rankB !== -1) return (rankA === -1 ? 99 : rankA) - (rankB === -1 ? 99 : rankB);
-    return a.city.localeCompare(b.city);
+  facilities.forEach((facility) => {
+    const marker = L.marker([Number(facility.lat), Number(facility.lng)], { icon: mapMarkerIcon(facility, facility.city === mapState.selectedCity) });
+    marker.bindPopup(mapPopup(facility));
+    marker.on("click", () => selectCity(facility.city));
+    mapState.markers.addLayer(marker);
+    if (!mapState.markerByCity.has(facility.city)) mapState.markerByCity.set(facility.city, { facility, marker });
   });
-}
-function clearEarthMarkers() {
-  if (!earthState.markerGroup) return;
-  while (earthState.markerGroup.children.length) {
-    const child = earthState.markerGroup.children[0];
-    earthState.markerGroup.remove(child);
-    child.traverse?.((node) => {
-      node.geometry?.dispose?.();
-      if (node.material) {
-        if (Array.isArray(node.material)) node.material.forEach((material) => material.dispose?.());
-        else node.material.dispose?.();
-      }
-    });
-  }
-  earthState.markers = [];
-  earthState.labelEntries = [];
-  const labelRoot = document.getElementById("earthLabels");
-  if (labelRoot) labelRoot.innerHTML = "";
-}
-function createEarthMarker(facility) {
-  const group = new THREE.Group();
-  const color = facility.open === false ? 0xffb000 : 0xff304f;
-  const core = new THREE.Mesh(
-    new THREE.SphereGeometry(0.028, 16, 16),
-    new THREE.MeshBasicMaterial({ color })
-  );
-  const halo = new THREE.Mesh(
-    new THREE.SphereGeometry(0.045, 16, 16),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28 })
-  );
-  const hit = new THREE.Mesh(
-    new THREE.SphereGeometry(0.11, 16, 16),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false })
-  );
-  group.add(hit);
-  group.add(halo);
-  group.add(core);
-  group.position.copy(latLngToVector3(facility.lat, facility.lng, 2.03));
-  group.userData = { name: facility.name, city: facility.city, state: facility.state, lat: facility.lat, lng: facility.lng, units: facility.units, open: facility.open !== false, type: facility.type || "Blood Bank", core, halo };
-  return group;
-}
-function rebuildEarthLabels() {
-  const container = document.getElementById("earthLabels");
-  if (!container) return;
-  container.innerHTML = "";
-  earthState.labelEntries = earthState.markers.map((marker) => {
-    const element = document.createElement("span");
-    element.className = `earth-label${marker.userData.open ? "" : " closed"}`;
-    element.textContent = marker.userData.city || marker.userData.name;
-    element.dataset.city = marker.userData.city || "";
-    element.addEventListener("click", () => selectCity(marker.userData.city));
-    container.appendChild(element);
-    return { element, marker };
-  });
-}
-function syncEarthLabels() {
-  const canvas = document.getElementById("earthCanvas");
-  if (!canvas || !earthState.camera || !earthState.globe) return;
-  const rect = canvas.getBoundingClientRect();
-  if (rect.width < 40 || rect.height < 40) return;
-  const globeCenter = new THREE.Vector3();
-  earthState.globe.getWorldPosition(globeCenter);
-  const visibleLabels = [];
-  earthState.labelEntries.forEach(({ element, marker }) => {
-    const worldPos = marker.getWorldPosition(new THREE.Vector3());
-    const normal = worldPos.clone().sub(globeCenter).normalize();
-    const viewDir = earthState.camera.position.clone().sub(worldPos).normalize();
-    const facing = normal.dot(viewDir) > 0.12;
-    const projected = worldPos.clone().project(earthState.camera);
-    const onScreen = projected.z > -1 && projected.z < 1;
-    if (!facing || !onScreen) {
-      element.classList.add("hidden");
-      return;
-    }
-    const width = element.offsetWidth || 92;
-    const height = element.offsetHeight || 30;
-    const baseX = (projected.x * 0.5 + 0.5) * rect.width;
-    const baseY = (-projected.y * 0.5 + 0.5) * rect.height;
-    const side = baseX > rect.width * 0.5 ? 1 : -1;
-    const x = Math.min(rect.width - width * 0.5 - 10, Math.max(width * 0.5 + 10, baseX + side * 18));
-    const y = Math.min(rect.height - height - 10, Math.max(height + 10, baseY));
-    visibleLabels.push({ element, marker, x, y, width, height, side });
-  });
-  const placed = [];
-  visibleLabels
-    .sort((a, b) => {
-      if (a.marker.userData.selected !== b.marker.userData.selected) return a.marker.userData.selected ? -1 : 1;
-      return Math.abs(a.x - rect.width * 0.5) - Math.abs(b.x - rect.width * 0.5);
-    })
-    .forEach((label) => {
-      let x = label.x;
-      let y = label.y;
-      for (let attempt = 0; attempt < 15; attempt += 1) {
-        const overlaps = placed.some((item) => Math.abs(item.x - x) < (item.width + label.width) * 0.75 && Math.abs(item.y - y) < (item.height + label.height) * 1.35);
-        if (!overlaps) break;
-        const lane = attempt % 2 === 0 ? 1 : -1;
-        y = Math.min(rect.height - label.height - 10, Math.max(label.height + 10, label.y + lane * Math.ceil((attempt + 1) / 2) * (label.height + 25)));
-        x = Math.min(rect.width - label.width * 0.5 - 10, Math.max(label.width * 0.5 + 10, label.x + label.side * Math.ceil(attempt / 2) * 28));
-      }
-      label.element.classList.toggle("selected", Boolean(label.marker.userData.selected));
-      label.element.classList.remove("hidden");
-      label.element.style.left = `${x}px`;
-      label.element.style.top = `${y}px`;
-      placed.push({ ...label, x, y });
-    });
-}
-function setZoomLevel(level) {
-  document.querySelectorAll("#zoomLevels button").forEach((node) => node.classList.toggle("active", node.dataset.level === level));
-  const target = selectedFacility || getNetworkMarkers()[0];
-  if (target) flyToLocation(target, level);
+  renderCityPicker();
 }
 function renderCityPicker() {
   const picker = document.getElementById("networkCityPicker");
   if (!picker) return;
-  const markerCities = new Set(getNetworkMarkers().map((item) => item.city));
-  const cities = REQUIRED_CITY_NAMES.filter((city) => markerCities.has(city));
-  picker.innerHTML = cities.map((city) => `<button type="button" class="${earthState.selectedCity === city ? "active" : ""}" data-city="${escapeHtml(city)}">${escapeHtml(city)}</button>`).join("");
+  const cities = [...mapState.markerByCity.keys()].filter((city) => REQUIRED_CITY_NAMES.includes(city));
+  picker.innerHTML = cities.map((city) => `<button type="button" class="${mapState.selectedCity === city ? "active" : ""}" data-city="${escapeHtml(city)}">${escapeHtml(city)}</button>`).join("");
 }
 function markSelectedCity(city) {
-  earthState.selectedCity = city || "";
-  earthState.markers.forEach((marker) => {
-    marker.userData.selected = marker.userData.city === earthState.selectedCity;
-    if (marker.userData.halo?.material) marker.userData.halo.material.opacity = marker.userData.selected ? 0.52 : 0.28;
-  });
-  earthState.selectedMarker = earthState.markers.find((marker) => marker.userData.selected) || null;
-  document.querySelectorAll(".earth-label").forEach((label) => label.classList.toggle("selected", label.dataset.city === earthState.selectedCity));
+  mapState.selectedCity = city || "";
+  mapState.markerByCity.forEach(({ facility, marker }) => marker.setIcon(mapMarkerIcon(facility, facility.city === mapState.selectedCity)));
   renderCityPicker();
 }
 function flyToLocation(target, zoom = "city") {
-  if (!target || !earthState.globe || !earthState.camera) return;
-  const lng = Number(target.lng ?? CITY_COORDS[target.city]?.lng ?? 78.9629) * Math.PI / 180;
-  const lat = Number(target.lat ?? CITY_COORDS[target.city]?.lat ?? 22.5);
-  const targetY = -lng - Math.PI / 2;
-  const targetX = Math.max(-0.22, Math.min(0.28, (lat - 20) * 0.012));
-  const cameraZ = {
-    national: 4.4,
-    state: 3.7,
-    city: 3.05,
-    street: 2.85
-  }[zoom] || 4.4;
-  if (window.gsap) {
-    gsap.killTweensOf([earthState.globe.rotation, earthState.camera.position]);
-    gsap.to(earthState.globe.rotation, { y: targetY, x: targetX, duration: 1.15, ease: "power3.inOut", overwrite: true, onUpdate: () => { earthState.labelDirty = true; } });
-    gsap.to(earthState.camera.position, { z: cameraZ, duration: 1.15, ease: "power3.inOut", overwrite: true, onUpdate: () => { earthState.labelDirty = true; } });
-  } else {
-    earthState.globe.rotation.y = targetY;
-    earthState.globe.rotation.x = targetX;
-    earthState.camera.position.z = cameraZ;
-    earthState.labelDirty = true;
-  }
+  if (!mapState.map || !target) return;
+  const levelZoom = { national: 5, state: 6, city: 9, street: 12 }[zoom] || 9;
+  mapState.map.flyTo([Number(target.lat), Number(target.lng)], levelZoom, { duration: 0.8 });
 }
-function renderCityPanel(facility) {
-  const city = facility.city;
-  const relatedHospitals = hospitals.filter((hospital) => hospital.city === city);
-  const relatedRequests = requests.filter((request) => request.hospital === city || relatedHospitals.some((hospital) => hospital.name === request.hospital));
-  document.getElementById("networkTitle").textContent = `${city} City View`;
-  document.getElementById("networkSummary").textContent = `${facility.state} layer selected. ${relatedHospitals.length || facility.hospitals || 1} hospital cluster(s), ${relatedRequests.length} request(s), and ${Number(facility.units || 0).toLocaleString("en-IN")} available or moving units are in focus.`;
-  document.getElementById("facilityList").innerHTML = (relatedHospitals.length ? relatedHospitals : [facility]).map((item) => `
-    <button class="facility active" data-city="${escapeHtml(city)}" type="button">
-      <strong>${escapeHtml(item.name || `${city} Blood Network`)}</strong>
-      <span>${escapeHtml(item.area || item.address || city)} • ${escapeHtml(item.city || city)}, ${escapeHtml(item.state || facility.state)}</span>
-      <small>${escapeHtml(item.contactPhone || item.phone || "Live network")} • ${escapeHtml(item.status || (facility.open ? "Connected" : "Limited"))}</small>
-    </button>
-  `).join("");
+function setZoomLevel(level) {
+  document.querySelectorAll("#zoomLevels button[data-level]").forEach((node) => node.classList.toggle("active", node.dataset.level === level));
+  if (level === "national") return fitIndia();
+  const target = selectedFacility || getNetworkMarkers()[0];
+  if (target) flyToLocation(target, level);
 }
 function selectCity(city) {
-  const facility =
-    getNetworkMarkers().find(item => item.city === city) ||
-    INDIA_LOCATIONS.find(item => item.city === city);
-
-  if (!facility) return;
-
-  selectedFacility = facility;
-
-  if (!document.getElementById("networkView").classList.contains("active")) {
-    setView("network");
-  }
-
-  markSelectedCity(facility.city);
-
-  document.querySelectorAll("#zoomLevels button").forEach(node =>
-    node.classList.toggle("active", node.dataset.level === "city")
-  );
-
-  flyToLocation(facility, "city");
-
-  showToast(`${facility.city} city network selected`);
+  const entry = mapState.markerByCity.get(city) || { facility: getNetworkMarkers().find((item) => item.city === city) };
+  if (!entry.facility) return;
+  selectedFacility = entry.facility;
+  markSelectedCity(city);
+  if (!document.getElementById("networkView").classList.contains("active")) setView("network");
+  flyToLocation(entry.facility, "city");
+  renderCityPanel(entry.facility);
+  showToast(`${city} city network selected`);
 }
-function markerFromIntersection(intersection) {
-  let object = intersection?.object;
-  while (object && !earthState.markers.includes(object)) object = object.parent;
-  return object || null;
+function initMap() {
+  const container = document.getElementById("indiaMap");
+  if (!container || mapState.initialized || !window.L) return;
+  mapState.map = L.map(container, { minZoom: 4, maxZoom: 14, maxBounds: INDIA_MAP_LIMITS, maxBoundsViscosity: 1, zoomControl: true, worldCopyJump: false, preferCanvas: true });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap contributors &copy; CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(mapState.map);
+  mapState.markers = L.markerClusterGroup({ showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 44 });
+  mapState.map.addLayer(mapState.markers);
+  mapState.initialized = true;
+  updateMapMarkers();
+  fitIndia();
 }
-function hitTestMarker(event) {
-  if (!earthState.camera || !earthState.markers.length || !window.THREE) return null;
-  const canvas = document.getElementById("earthCanvas");
-  const rect = canvas.getBoundingClientRect();
-  if (!earthState.raycaster) earthState.raycaster = new THREE.Raycaster();
-  earthState.pointer = earthState.pointer || new THREE.Vector2();
-  earthState.pointer.set(
-    ((event.clientX - rect.left) / rect.width) * 2 - 1,
-    -((event.clientY - rect.top) / rect.height) * 2 + 1
-  );
-  earthState.raycaster.setFromCamera(earthState.pointer, earthState.camera);
-  return markerFromIntersection(earthState.raycaster.intersectObjects(earthState.markers, true)[0]);
-}
-function isNetworkViewActive() {
-  return document.getElementById("networkView")?.classList.contains("active");
-}
-function initEarth() {
-  const canvas = document.getElementById("earthCanvas");
-  if (!canvas || earthState.initialized) return;
-  if (!window.THREE) {
-    // drawFallbackEarth(canvas);
-    return;
-  }
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, 6);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  const loader = new THREE.TextureLoader();
-  const globeMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    specular: new THREE.Color(0x333333),
-    shininess: 12
-  });
-  loader.load(EARTH_TEXTURES.map, (map) => {
-    globeMaterial.map = map;
-    globeMaterial.needsUpdate = true;
-  });
-  loader.load(EARTH_TEXTURES.normal, (normalMap) => {
-    globeMaterial.normalMap = normalMap;
-    globeMaterial.needsUpdate = true;
-  });
-  loader.load(EARTH_TEXTURES.specular, (specularMap) => {
-    globeMaterial.specularMap = specularMap;
-    globeMaterial.needsUpdate = true;
-  });
-  const globe = new THREE.Mesh(new THREE.SphereGeometry(2, 48, 48), globeMaterial);
-  scene.add(globe);
-  // globe.rotation.y = -Math.PI / 2;
-  const markerGroup = new THREE.Group();
-  globe.add(markerGroup);
-  loader.load(EARTH_TEXTURES.clouds, (cloudMap) => {
-    const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(2.03, 48, 48),
-      new THREE.MeshPhongMaterial({ map: cloudMap, transparent: true, opacity: 0.24, depthWrite: false })
-    );
-    globe.add(clouds);
-    earthState.clouds = clouds;
-  });
-  scene.add(new THREE.AmbientLight(0x404858, 1.2));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.8);
-  sun.position.set(5, 2, 4);
-  scene.add(sun);
-  const rim = new THREE.DirectionalLight(0x29d4ff, 0.35);
-  rim.position.set(-4, -1, -3);
-  scene.add(rim);
-  const atmosphere = new THREE.Mesh(
-    new THREE.SphereGeometry(2.12, 48, 48),
-    new THREE.MeshBasicMaterial({ color: 0x29d4ff, transparent: true, opacity: 0.08, side: THREE.BackSide })
-  );
-  scene.add(atmosphere);
-  const stars = new THREE.Points(
-    new THREE.BufferGeometry().setFromPoints(Array.from({ length: 260 }, () => new THREE.Vector3(
-      (Math.random() - 0.5) * 80,
-      (Math.random() - 0.5) * 80,
-      (Math.random() - 0.5) * 80
-    ))),
-    new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.55 })
-  );
-  scene.add(stars);
-  earthState = { ...earthState, renderer, scene, camera, globe, markerGroup, markers: [], labelEntries: [], initialized: true };
-  updateEarthMarkers();
-  resizeEarth();
-  let dragging = false;
-  let moved = false;
-  let lastX = 0;
-  let startX = 0;
-  let startY = 0;
-  let lastHoverTest = 0;
-  canvas.addEventListener("pointerdown", (event) => {
-    dragging = true;
-    moved = false;
-    startX = event.clientX;
-    startY = event.clientY;
-    lastX = event.clientX;
-    canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener("pointermove", (event) => {
-    const distance = Math.hypot(event.clientX - startX, event.clientY - startY);
-    if (dragging && distance > 3) {
-      moved = true;
-      globe.rotation.y += (event.clientX - lastX) * 0.007;
-      lastX = event.clientX;
-      earthState.labelDirty = true;
-      return;
-    }
-    const now = performance.now();
-    if (now - lastHoverTest < 48) return;
-    lastHoverTest = now;
-    const hover = hitTestMarker(event);
-    if (earthState.hoveredMarker !== hover) {
-      if (earthState.hoveredMarker) earthState.hoveredMarker.userData.hovered = false;
-      earthState.hoveredMarker = hover;
-      if (hover) hover.userData.hovered = true;
-      canvas.style.cursor = hover ? "pointer" : dragging ? "grabbing" : "grab";
-    }
-  });
-  canvas.addEventListener("pointerup", (event) => {
-    const hit = hitTestMarker(event);
-    if (!moved && hit?.userData?.city) selectCity(hit.userData.city);
-    dragging = false;
-    canvas.style.cursor = "grab";
-  });
-  canvas.addEventListener("pointerleave", () => {
-    dragging = false;
-    if (earthState.hoveredMarker) earthState.hoveredMarker.userData.hovered = false;
-    earthState.hoveredMarker = null;
-    canvas.style.cursor = "grab";
-  });
-  canvas.addEventListener("wheel", (event) => {
-    event.preventDefault();
-    const nextZoom = Math.min(8, Math.max(2.8, camera.position.z + event.deltaY * 0.004));
-    if (window.gsap) gsap.to(camera.position, { z: nextZoom, duration: 0.25, ease: "power2.out", overwrite: true });
-    else camera.position.z = nextZoom;
-  }, { passive: false });
-  if (!earthState.animating) {
-    earthState.animating = true;
-    function animate() {
-      requestAnimationFrame(animate);
-      if (!isNetworkViewActive()) return;
-      if (!dragging && !selectedFacility) {
-        globe.rotation.y += 0.0008;
-      }
-      if (earthState.clouds) earthState.clouds.rotation.y += 0.00025;
-      const now = Date.now();
-      earthState.markers.forEach((marker, index) => {
-        const emphasis = marker.userData.selected ? 1.34 : marker.userData.hovered ? 1.18 : 1;
-        const pulse = emphasis * (1 + Math.sin(now / 260 + index) * 0.1);
-        marker.scale.setScalar(pulse);
-      });
-      earthState.frame = (earthState.frame + 1) % 3;
-      if (earthState.frame === 0 || earthState.labelDirty) {
-        syncEarthLabels();
-        earthState.labelDirty = false;
-      }
-      renderer.render(scene, camera);
-    }
-    animate();
-  }
-  flyToIndia();
-}
-function updateEarthMarkers() {
-  if (!earthState.markerGroup || !window.THREE) return;
-  clearEarthMarkers();
-  const liveMarkers = getNetworkMarkers();
-  earthState.markers = liveMarkers.map((facility) => {
-    const marker = createEarthMarker(facility);
-    earthState.markerGroup.add(marker);
-    return marker;
-  });
-  if (earthState.selectedCity) markSelectedCity(earthState.selectedCity);
-  rebuildEarthLabels();
-  syncEarthLabels();
-}
-function resizeEarth() {
-  const canvas = document.getElementById("earthCanvas");
-  if (!canvas || !earthState.renderer) return;
-  const rect = canvas.getBoundingClientRect();
-  if (rect.width < 40 || rect.height < 40) return;
-  earthState.camera.aspect = rect.width / Math.max(1, rect.height);
-  earthState.camera.updateProjectionMatrix();
-  earthState.renderer.setSize(rect.width, rect.height, false);
-  syncEarthLabels();
-}
-function flyToIndia() {
-  if (!earthState.globe) return;
-  const indiaLng = 78.9629 * Math.PI / 180;
-  const targetY = -indiaLng - Math.PI / 2;
-  const destination = 4.4;
-  if (window.gsap) {
-    gsap.to(earthState.globe.rotation, { y: targetY, x: 0.12, duration: 1.3, ease: "power3.inOut" });
-    gsap.to(earthState.camera.position, { z: destination, duration: 1.3, ease: "power3.inOut" });
-  } else {
-    earthState.globe.rotation.y = targetY;
-    earthState.globe.rotation.x = 0.12;
-    earthState.camera.position.z = destination;
-  }
-}
-function drawFallbackEarth(canvas) {
-  const ctx = canvas.getContext("2d");
-  function draw() {
-    const { width, height } = canvas.getBoundingClientRect();
-    canvas.width = width * devicePixelRatio;
-    canvas.height = height * devicePixelRatio;
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-    const r = Math.min(width, height) * 0.32;
-    const cx = width / 2;
-    const cy = height / 2;
-    const pulse = Math.sin(Date.now() / 420) * 8;
-    const gradient = ctx.createRadialGradient(cx - r / 3, cy - r / 3, 10, cx, cy, r + 30);
-    gradient.addColorStop(0, "#24445f");
-    gradient.addColorStop(1, "#070b12");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,48,79,.45)";
-    ctx.lineWidth = 1;
-    for (let i = -3; i <= 3; i++) {
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, r, r * (0.18 + Math.abs(i) * 0.08), i * 0.35, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    INDIA_LOCATIONS.forEach((facility, index) => {
-      const angle = index / INDIA_LOCATIONS.length * Math.PI * 2 + Date.now() / 2800;
-      const x = cx + Math.cos(angle) * (r * 0.42);
-      const y = cy + Math.sin(angle) * (r * 0.32);
-      ctx.fillStyle = facility.open ? "#ff304f" : "#ffb000";
-      ctx.beginPath();
-      ctx.arc(x, y, 5 + pulse / 12, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    earthState.fallbackTimer = requestAnimationFrame(draw);
-  }
-  draw();
+function resizeMap() {
+  if (!mapState.map) return;
+  window.setTimeout(() => mapState.map.invalidateSize({ pan: false }), 0);
 }
 
 function openEntityModal(title, fields, submitText, onSubmit) {
@@ -2051,6 +1626,10 @@ function drawRoute() {
 function wireEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   document.getElementById("menuButton").addEventListener("click", () => document.body.classList.toggle("menu-open"));
+  document.getElementById("mobileBackdrop").addEventListener("click", () => document.body.classList.remove("menu-open"));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") document.body.classList.remove("menu-open");
+  });
   document.getElementById("themeToggle").addEventListener("click", () => document.body.classList.toggle("soft-mode"));
   document.getElementById("openLoginBtn").addEventListener("click", () => openAuthModal("login"));
   document.getElementById("openRegisterBtn").addEventListener("click", () => openAuthModal("register"));
@@ -2141,7 +1720,7 @@ function wireEvents() {
       if (target.dataset.facility) {
         selectedFacility = buildStateClusters()[Number(target.dataset.facility)] || INDIA_LOCATIONS[Number(target.dataset.facility)] || INDIA_LOCATIONS[0];
         renderNetwork();
-        flyToIndia();
+        fitIndia();
       }
       if (target.dataset.city) {
         selectCity(target.dataset.city);
@@ -2151,6 +1730,7 @@ function wireEvents() {
         document.getElementById("networkTitle").textContent = `${target.textContent} View`;
         document.getElementById("networkSummary").textContent = `${target.textContent} zoom shows Indian blood banks, hospitals, donor clusters, and live contact detail layers.`;
       }
+      if (target.dataset.mapReset) fitIndia();
       if (target.dataset.addCart) {
         addToCart(target.dataset.addCart);
       }
@@ -2301,7 +1881,7 @@ function wireEvents() {
   window.addEventListener("resize", () => {
     if (resizeRaf) cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(() => {
-      resizeEarth();
+      resizeMap();
       resizeCharts();
       resizeLiveNetwork();
       drawStatSparklines();
@@ -2332,7 +1912,7 @@ async function init() {
   updateAuthUI();
   updateDateTime();
   window.setInterval(updateDateTime, 60000);
-  initEarth();
+  initMap();
   initLiveNetwork();
   resizeLiveNetwork();
   try {
