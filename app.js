@@ -80,6 +80,7 @@ let selectedCompatGroup = "O+";
 let selectedProductId = null;
 let resizeRaf = null;
 let clockTimer = null;
+let sidebarMode = null;
 
 function token() { return sessionStorage.getItem(AUTH_KEY); }
 function currentUser() {
@@ -265,11 +266,19 @@ function closeAuthModal() {
   modal.classList.remove("active");
   modal.setAttribute("aria-hidden", "true");
 }
+function closeSidebar() {
+  document.body.classList.remove("menu-open");
+  document.getElementById("menuButton")?.setAttribute("aria-expanded", "false");
+}
+function syncSidebarMode() {
+  const mode = window.innerWidth <= 1180 ? "mobile" : "desktop";
+  if (sidebarMode !== mode || mode === "desktop") closeSidebar();
+  sidebarMode = mode;
+}
 function setView(name) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${name}View`));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
-  document.body.classList.remove("menu-open");
-  document.getElementById("menuButton")?.setAttribute("aria-expanded", "false");
+  closeSidebar();
   if (name === "network") requestAnimationFrame(() => { resizeMap(); if (!mapState.locationRequested) requestMapLocation().catch(() => {}); });
   if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); renderCharts(); resizeLiveNetwork(); drawStatSparklines(); });
   if (name === "product" && selectedProductId) renderProductDetail(selectedProductId);
@@ -1754,24 +1763,23 @@ function wireEvents() {
     event.currentTarget.setAttribute("aria-expanded", String(isOpen));
   });
   document.getElementById("mobileBackdrop").addEventListener("click", () => {
-    document.body.classList.remove("menu-open");
-    document.getElementById("menuButton").setAttribute("aria-expanded", "false");
+    closeSidebar();
   });
   document.addEventListener("click", (event) => {
     if (!document.body.classList.contains("menu-open")) return;
     const sidebar = document.querySelector(".sidebar");
     const menuButton = document.getElementById("menuButton");
     if (!sidebar?.contains(event.target) && event.target !== menuButton) {
-      document.body.classList.remove("menu-open");
-      menuButton?.setAttribute("aria-expanded", "false");
+      closeSidebar();
     }
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      document.body.classList.remove("menu-open");
-      document.getElementById("menuButton")?.setAttribute("aria-expanded", "false");
+      closeSidebar();
     }
   });
+  window.addEventListener("resize", syncSidebarMode);
+  syncSidebarMode();
   document.getElementById("themeToggle").addEventListener("click", () => document.body.classList.toggle("soft-mode"));
   document.getElementById("openLoginBtn").addEventListener("click", () => openAuthModal("login"));
   document.getElementById("openRegisterBtn").addEventListener("click", () => openAuthModal("register"));

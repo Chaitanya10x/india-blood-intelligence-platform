@@ -2081,6 +2081,7 @@ table td {
 }
 
 @media (max-width: 1180px) {
+  body.menu-open { overflow: hidden; }
   .sidebar {
     inset: 12px auto 12px 12px;
     transform: translateX(calc(-100% - 24px));
