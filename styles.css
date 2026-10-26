@@ -1092,6 +1092,7 @@ h2 { font-size: 17px; letter-spacing: 0; font-weight: 800; }
 .leaflet-control-attribution a { color: #ff9cac; }
 .map-marker { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: #ef233c; box-shadow: 0 0 0 5px rgba(239,35,60,.24), 0 0 22px rgba(239,35,60,.7); }
 .map-marker.selected { transform: scale(1.25); }
+.user-location-marker { display: block; width: 20px; height: 20px; border: 3px solid #fff; border-radius: 50%; background: #50c8ff; box-shadow: 0 0 0 7px rgba(80,200,255,.2), 0 0 24px rgba(80,200,255,.8); }
 .map-marker.closed { background: #ffb000; box-shadow: 0 0 0 5px rgba(255,176,0,.2), 0 0 22px rgba(255,176,0,.6); }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0b1017; color: #f4f6fb; border: 1px solid rgba(255,255,255,.12); }
 .leaflet-popup-content { margin: 14px 16px; line-height: 1.45; }

@@ -70,7 +70,7 @@ let requestChart;
 let dashDonationChart;
 let dashRequestChart;
 let liveNetworkState = { animId: null, nodes: [], connections: [], width: 0, height: 0, dpr: 1 };
-let mapState = { map: null, markers: null, markerByCity: new Map(), selectedCity: "", initialized: false, visibleReady: false };
+let mapState = { map: null, markers: null, markerByCity: new Map(), selectedCity: "", initialized: false, visibleReady: false, locationRequested: false, locationPromise: null, userMarker: null, accuracyCircle: null, userLocation: null };
 let marketplaceCart = [];
 let marketplaceState = { items: [] };
 let checkoutDraft = null;
@@ -258,8 +258,8 @@ function setView(name) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${name}View`));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
-  if (name === "network") requestAnimationFrame(resizeMap);
-  if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); resizeLiveNetwork(); drawStatSparklines(); });
+  if (name === "network") requestAnimationFrame(() => { resizeMap(); if (!mapState.locationRequested) requestMapLocation(); });
+  if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); renderCharts(); resizeLiveNetwork(); drawStatSparklines(); });
   if (name === "product" && selectedProductId) renderProductDetail(selectedProductId);
   if (name === "orders") renderOrderHistory();
   if (window.gsap) gsap.from(`#${name}View`, { opacity: 0, y: 12, duration: 0.35, ease: "power2.out" });
@@ -945,11 +945,11 @@ function renderProductDetail(itemId) {
   `;
 }
 function drawStatSparklines() {
-  const monthUnits = analyticsData?.monthlyDonations?.map((m) => m.units) || [420, 620, 580, 780, 910, 1040];
+  const monthUnits = analyticsData?.monthlyDonations?.map((m) => m.units) || [];
   drawSparkline("sparkUnits", monthUnits);
-  drawSparkline("sparkDonors", monthUnits.map((v) => Math.round(v * 0.7)));
-  drawSparkline("sparkHospitals", monthUnits.map((v) => Math.round(v * 0.12)));
-  drawSparkline("sparkRequests", monthUnits.map((v) => Math.round(v * 0.08)));
+  drawSparkline("sparkDonors", []);
+  drawSparkline("sparkHospitals", []);
+  drawSparkline("sparkRequests", []);
 }
 function addToCart(itemId) {
   const source = marketplaceState.items.find((item) => item.id === itemId) || getMarketplaceItems().find((item) => item.id === itemId);
@@ -1212,8 +1212,8 @@ function renderAnalytics() {
   const maxUnits = Math.max(1, ...(analyticsData?.stateWiseAnalytics || []).map((item) => item.units));
   const demand = analyticsData?.stateWiseAnalytics?.length
     ? analyticsData.stateWiseAnalytics.map((item) => [item.state, Math.round((item.units / maxUnits) * 100), item])
-    : [["Maharashtra", 92], ["Delhi NCR", 84], ["Karnataka", 71], ["Tamil Nadu", 66], ["Gujarat", 58]];
-  document.getElementById("stateDemand").innerHTML = demand.map(([state, value]) => `<div><span>${state}</span><b style="width:${value}%"></b><em>${value}%</em></div>`).join("");
+    : [];
+  document.getElementById("stateDemand").innerHTML = demand.map(([state, value]) => `<div><span>${escapeHtml(state)}</span><b style="width:${value}%"></b><em>${value}%</em></div>`).join("") || `<p class="empty">State demand data is unavailable.</p>`;
   const heatmap = document.getElementById("analyticsHeatmap");
   if (heatmap) {
     heatmap.innerHTML = demand.slice(0, 12).map(([state, value, item]) => `
@@ -1221,7 +1221,7 @@ function renderAnalytics() {
         <strong>${escapeHtml(state)}</strong>
         <span>${Number(item?.requests || value).toLocaleString("en-IN")} requests</span>
       </button>
-    `).join("");
+    `).join("") || `<p class="empty">Demand heatmap data is unavailable.</p>`;
   }
   const forecast = document.getElementById("forecastRail");
   if (forecast) {
@@ -1239,7 +1239,7 @@ function renderAnalytics() {
   `).join("") || `<p class="empty">No donor statistics yet.</p>`;
   document.getElementById("predictionList").innerHTML = stock.slice().sort((a, b) => Number(a.units) - Number(b.units)).slice(0, 5).map((item) => `
     <div><strong>${escapeHtml(item.group)}</strong><span>${stockStatus(item)} risk in ${Math.max(1, Math.round(Number(item.units || 1) / 18))} days</span></div>
-  `).join("");
+  `).join("") || `<p class="empty">Shortage prediction data is unavailable.</p>`;
   renderCharts();
 }
 function renderAll() {
@@ -1297,8 +1297,8 @@ function renderCharts() {
   }
   const chartDistribution = analyticsData?.bloodDistribution?.length ? analyticsData.bloodDistribution : stock;
   const colors = chartColors(chartDistribution);
-  const monthLabels = analyticsData?.monthlyDonations?.length ? analyticsData.monthlyDonations.map((item) => item.label) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  const monthUnits = analyticsData?.monthlyDonations?.length ? analyticsData.monthlyDonations.map((item) => item.units) : [420, 620, 580, 780, 910, 1040];
+  const monthLabels = analyticsData?.monthlyDonations?.length ? analyticsData.monthlyDonations.map((item) => item.label) : [];
+  const monthUnits = analyticsData?.monthlyDonations?.length ? analyticsData.monthlyDonations.map((item) => item.units) : [];
   const requestStats = analyticsData?.requestStatistics?.length ? analyticsData.requestStatistics : STATUS_OPTIONS.map((status) => ({ status, count: requests.filter((item) => item.status === status).length }));
   const common = {
     responsive: true,
@@ -1397,6 +1397,57 @@ function drawFallbackCharts() {
 const INDIA_MAP_BOUNDS = [[8, 68], [37.5, 97.5]];
 const INDIA_MAP_LIMITS = [[5.5, 65.5], [39.5, 100]];
 
+function getNetworkMarkers() {
+  const byCity = new Map();
+  const totalStock = stock.reduce((sum, item) => sum + Number(item.units || 0), 0);
+  const addMarker = (facility) => {
+    const city = facility.city || "";
+    const lat = Number(facility.lat);
+    const lng = Number(facility.lng);
+    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+    const existing = byCity.get(city);
+    if (!city || (!hasCoordinates && !existing)) return;
+    const units = Number(facility.units || facility.stock || 0);
+    if (existing) {
+      existing.units += units;
+      existing.hospitals += facility.type === "Hospital" ? 1 : 0;
+      existing.open = existing.open || facility.open !== false;
+      existing.names.push(facility.name);
+      return;
+    }
+    byCity.set(city, {
+      name: `${city} Blood Network`,
+      city,
+      state: facility.state || "India",
+      type: "City Network",
+      lat,
+      lng,
+      groups: facility.groups || BLOOD_GROUPS,
+      units: units || Math.floor(totalStock / Math.max(hospitals.length || INDIA_LOCATIONS.length, 1)),
+      phone: facility.phone || facility.contactPhone || "",
+      address: facility.address || facility.area || city,
+      open: facility.open !== false,
+      hospitals: facility.type === "Hospital" ? 1 : 0,
+      names: [facility.name]
+    });
+  };
+
+  INDIA_LOCATIONS.forEach(addMarker);
+  hospitals.forEach((hospital) => addMarker({
+    ...hospital,
+    type: "Hospital",
+    open: hospital.status === "Connected",
+    units: hospital.stock
+  }));
+
+  return Array.from(byCity.values()).sort((a, b) => {
+    const rankA = REQUIRED_CITY_NAMES.indexOf(a.city);
+    const rankB = REQUIRED_CITY_NAMES.indexOf(b.city);
+    if (rankA !== -1 || rankB !== -1) return (rankA === -1 ? 99 : rankA) - (rankB === -1 ? 99 : rankB);
+    return a.city.localeCompare(b.city);
+  });
+}
+
 function mapMarkerIcon(facility, selected = false) {
   const className = `map-marker${facility.open === false ? " closed" : ""}${selected ? " selected" : ""}`;
   return L.divIcon({ className: "", html: `<span class="${className}"></span>`, iconSize: [18, 18], iconAnchor: [9, 9], popupAnchor: [0, -10] });
@@ -1483,6 +1534,54 @@ function resizeMap() {
     mapState.visibleReady = true;
     fitIndia();
   }
+}
+function browserLocationError(error) {
+  if (error?.code === 1) return "Location permission was denied. You can still search by city.";
+  if (error?.code === 3) return "Location request timed out. You can retry with Use My Location.";
+  if (error?.code === 2) return "Your location is currently unavailable. You can retry or search by city.";
+  return "Location is unavailable in this browser or connection. You can search by city.";
+}
+function getBrowserLocation(force = false) {
+  if (!force && mapState.userLocation) return Promise.resolve(mapState.userLocation);
+  if (!navigator.geolocation) return Promise.reject(new Error("Location is not supported by this browser."));
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy }),
+      reject,
+      { enableHighAccuracy: true, maximumAge: 300000, timeout: 10000 }
+    );
+  });
+}
+function showUserLocation(location) {
+  if (!mapState.map) return;
+  const point = [location.lat, location.lng];
+  const icon = L.divIcon({ className: "", html: `<span class="user-location-marker" aria-label="Your current location"></span>`, iconSize: [20, 20], iconAnchor: [10, 10] });
+  if (mapState.userMarker) mapState.userMarker.remove();
+  if (mapState.accuracyCircle) mapState.accuracyCircle.remove();
+  mapState.userMarker = L.marker(point, { icon, zIndexOffset: 1000 }).addTo(mapState.map).bindPopup("Your current location");
+  if (Number.isFinite(Number(location.accuracy)) && location.accuracy > 0) {
+    mapState.accuracyCircle = L.circle(point, { radius: location.accuracy, color: "#50c8ff", fillColor: "#50c8ff", fillOpacity: 0.1, weight: 1 }).addTo(mapState.map);
+  }
+  mapState.userLocation = location;
+  mapState.map.setView(point, 12, { animate: true });
+}
+function requestMapLocation(force = false) {
+  if (!mapState.map || (!force && mapState.locationRequested)) return mapState.locationPromise;
+  mapState.locationRequested = true;
+  document.getElementById("networkSummary").textContent = "Requesting your location to center the map. Allow location access when prompted.";
+  mapState.locationPromise = getBrowserLocation(force)
+    .then((location) => {
+      showUserLocation(location);
+      document.getElementById("networkSummary").textContent = "Map centered on your current location. Blood bank markers show available network facilities.";
+      return location;
+    })
+    .catch((error) => {
+      document.getElementById("networkSummary").textContent = browserLocationError(error);
+      showToast(browserLocationError(error));
+      fitIndia();
+      throw error;
+    });
+  return mapState.locationPromise;
 }
 
 function openEntityModal(title, fields, submitText, onSubmit) {
@@ -1584,30 +1683,30 @@ function distanceKm(a, b) {
 }
 function findNearbyBloodBanks() {
   setView("network");
-  const fallback = { lat: 28.6139, lng: 77.209, label: "Delhi fallback" };
-  const handle = (coords, label = "Your location") => {
-    const ranked = getNetworkMarkers().map((item) => ({ ...item, distance: distanceKm(coords, item) })).sort((a, b) => a.distance - b.distance);
+  requestMapLocation(false).then((coords) => {
+    const ranked = getNetworkMarkers()
+      .filter((item) => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)))
+      .map((item) => ({ ...item, distance: distanceKm(coords, item) }))
+      .sort((a, b) => a.distance - b.distance);
+    document.getElementById("networkTitle").textContent = "Nearby Blood Banks";
+    if (!ranked.length) {
+      selectedFacility = null;
+      document.getElementById("networkSummary").textContent = "No blood banks with valid coordinates are available for nearby search.";
+      document.getElementById("facilityList").innerHTML = `<p class="empty">No mapped facilities available.</p>`;
+      return;
+    }
     selectedFacility = ranked[0];
-    document.getElementById("networkTitle").textContent = `Nearby Blood Banks`;
-    document.getElementById("networkSummary").textContent = `${label}: nearest demo facility is ${selectedFacility.name}, ${selectedFacility.distance.toFixed(1)} km away. Demo inventory is marked until live inventory APIs are connected.`;
+    document.getElementById("networkSummary").textContent = `Nearby facilities sorted from your current location. Closest: ${selectedFacility.name}, ${selectedFacility.distance.toFixed(1)} km away.`;
     document.getElementById("facilityList").innerHTML = ranked.map((item) => `
       <button class="facility" data-city="${escapeHtml(item.city)}" type="button">
         <strong>${escapeHtml(item.name)}</strong>
         <span>${item.distance.toFixed(1)} km • ${escapeHtml(item.address || item.city)}</span>
-        <small>${escapeHtml((item.groups || BLOOD_GROUPS).join(", "))} • ${item.units} units • ${escapeHtml(item.phone || "Live network")} • ${item.open ? "Open" : "Limited"}</small>
+        <small>${escapeHtml((item.groups || BLOOD_GROUPS).join(", "))} • ${item.units} units • ${escapeHtml(item.phone || "Network facility")} • ${item.open ? "Open" : "Limited"}</small>
       </button>
     `).join("");
     selectCity(selectedFacility.city);
     showToast("Nearby blood banks sorted by distance");
-  };
-  if (!navigator.geolocation) {
-    handle(fallback, fallback.label);
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (position) => handle({ lat: position.coords.latitude, lng: position.coords.longitude }),
-    () => handle(fallback, "Location permission unavailable")
-  );
+  }).catch(() => {});
 }
 function searchNetwork(term) {
   const query = term.trim().toLowerCase();
@@ -1805,6 +1904,9 @@ function wireEvents() {
   ["findNearbyBtn", "findNearbyHero", "floatingFinder"].forEach((id) => {
     const node = document.getElementById(id);
     if (node) node.addEventListener("click", findNearbyBloodBanks);
+  });
+  document.getElementById("useLocationBtn").addEventListener("click", () => {
+    requestMapLocation(true).catch(() => {});
   });
   document.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
