@@ -258,7 +258,7 @@ function setView(name) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${name}View`));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
-  if (name === "network") requestAnimationFrame(() => { resizeMap(); if (!mapState.locationRequested) requestMapLocation(); });
+  if (name === "network") requestAnimationFrame(() => { resizeMap(); if (!mapState.locationRequested) requestMapLocation().catch(() => {}); });
   if (name === "analytics" || name === "dashboard") requestAnimationFrame(() => { resizeCharts(); renderCharts(); resizeLiveNetwork(); drawStatSparklines(); });
   if (name === "product" && selectedProductId) renderProductDetail(selectedProductId);
   if (name === "orders") renderOrderHistory();
