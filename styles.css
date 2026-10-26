@@ -2086,6 +2086,7 @@ table td {
   .checkout-grid {
     grid-template-columns: 1fr;
   }
+  .network-layout { grid-template-columns: minmax(0, 1fr) 320px; }
   .blood-group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -2123,6 +2124,7 @@ table td {
   #indiaMap {
     min-height: 430px;
   }
+  .network-layout { grid-template-columns: 1fr; }
   main { padding-bottom: 132px; }
   .floating-finder {
     right: 14px;

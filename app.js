@@ -70,7 +70,7 @@ let requestChart;
 let dashDonationChart;
 let dashRequestChart;
 let liveNetworkState = { animId: null, nodes: [], connections: [], width: 0, height: 0, dpr: 1 };
-let mapState = { map: null, markers: null, markerByCity: new Map(), selectedCity: "", initialized: false };
+let mapState = { map: null, markers: null, markerByCity: new Map(), selectedCity: "", initialized: false, visibleReady: false };
 let marketplaceCart = [];
 let marketplaceState = { items: [] };
 let checkoutDraft = null;
@@ -1473,7 +1473,16 @@ function initMap() {
 }
 function resizeMap() {
   if (!mapState.map) return;
-  window.setTimeout(() => mapState.map.invalidateSize({ pan: false }), 0);
+  const container = document.getElementById("indiaMap");
+  if (!container || container.clientWidth < 40 || container.clientHeight < 40) {
+    if (isNetworkViewActive()) window.requestAnimationFrame(resizeMap);
+    return;
+  }
+  mapState.map.invalidateSize({ pan: false });
+  if (!mapState.visibleReady) {
+    mapState.visibleReady = true;
+    fitIndia();
+  }
 }
 
 function openEntityModal(title, fields, submitText, onSubmit) {
