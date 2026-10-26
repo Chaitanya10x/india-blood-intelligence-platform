@@ -1464,7 +1464,7 @@ function initMap() {
   const container = document.getElementById("indiaMap");
   if (!container || mapState.initialized || !window.L) return;
   mapState.map = L.map(container, { minZoom: 4, maxZoom: 14, maxBounds: INDIA_MAP_LIMITS, maxBoundsViscosity: 1, zoomControl: true, worldCopyJump: false, preferCanvas: true });
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap contributors &copy; CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(mapState.map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener\">OpenStreetMap contributors</a>", maxZoom: 19 }).addTo(mapState.map);
   mapState.markers = L.markerClusterGroup({ showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 44 });
   mapState.map.addLayer(mapState.markers);
   mapState.initialized = true;
