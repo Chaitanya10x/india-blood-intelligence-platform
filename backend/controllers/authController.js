@@ -61,4 +61,18 @@ const me = asyncHandler(async (req, res) => {
   res.json({ user: req.user });
 });
 
-module.exports = { register, login, me };
+const updateProfile = asyncHandler(async (req, res) => {
+  const name = requiredString(req.body.name, "Name");
+  const email = requiredString(req.body.email, "Email").toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new ApiError(400, "Email is invalid");
+
+  const existingUser = await User.findOne({ email, _id: { $ne: req.user._id } });
+  if (existingUser) throw new ApiError(409, "Email already exists");
+
+  req.user.name = name;
+  req.user.email = email;
+  const updated = await req.user.save();
+  res.json({ user: { id: updated._id, name: updated.name, email: updated.email, role: updated.role } });
+});
+
+module.exports = { register, login, me, updateProfile };

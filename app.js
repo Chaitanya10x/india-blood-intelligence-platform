@@ -168,6 +168,10 @@ function updateAuthUI(user = currentUser()) {
   if (topbarName) topbarName.textContent = firstName || "there";
   const dashName = document.getElementById("dashboardAdminName");
   if (dashName) dashName.textContent = firstName || "there";
+  const profileNameSetting = document.getElementById("adminNameSetting");
+  const profileEmailSetting = document.getElementById("emailSetting");
+  if (profileNameSetting) profileNameSetting.value = displayName;
+  if (profileEmailSetting) profileEmailSetting.value = isAuthed ? String(user.email || "") : "";
   const greeting = isAuthed ? getGreeting() : "Welcome Back";
   ["dashboardGreeting", "topbarGreeting"].forEach((id) => {
     const element = document.getElementById(id);
@@ -300,6 +304,9 @@ async function loadData() {
   ]);
 
   if (stockResult.status === "fulfilled") stock = stockResult.value;
+  const thresholdSetting = document.getElementById("thresholdSetting");
+  const savedThreshold = stock.find((item) => Number.isFinite(Number(item.lowStockThreshold)))?.lowStockThreshold;
+  if (thresholdSetting && savedThreshold !== undefined) thresholdSetting.value = savedThreshold;
   if (donorResult.status === "fulfilled") donors = donorResult.value;
   if (hospitalResult.status === "fulfilled") hospitals = hospitalResult.value;
   if (requestResult.status === "fulfilled") requests = requestResult.value;
@@ -1934,10 +1941,23 @@ function wireEvents() {
     }
   });
   document.getElementById("saveSettings").addEventListener("click", async () => {
-    const threshold = Number(document.getElementById("thresholdSetting").value || 60);
-    await Promise.all(stock.map((item) => api(`/blood-stock/${item._id}`, { method: "PUT", body: JSON.stringify({ ...item, lowStockThreshold: threshold }) })));
-    showToast("Settings saved");
-    await loadData();
+    const name = document.getElementById("adminNameSetting").value.trim();
+    const email = document.getElementById("emailSetting").value.trim().toLowerCase();
+    const threshold = Number(document.getElementById("thresholdSetting").value);
+    if (!name || !email || !Number.isFinite(threshold) || threshold < 0) {
+      showToast("Enter a valid name, email, and threshold");
+      return;
+    }
+    try {
+      const profile = await api("/auth/profile", { method: "PATCH", body: JSON.stringify({ name, email }) });
+      sessionStorage.setItem(USER_KEY, JSON.stringify(profile.user));
+      updateAuthUI(profile.user);
+      await Promise.all(stock.map((item) => api(`/blood-stock/${item._id}`, { method: "PUT", body: JSON.stringify({ ...item, lowStockThreshold: threshold }) })));
+      showToast("Settings saved");
+      await loadData();
+    } catch (error) {
+      showToast(error.message);
+    }
   });
 
   // Marketplace event listeners

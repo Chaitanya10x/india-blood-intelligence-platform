@@ -1602,7 +1602,7 @@ function flyToLocation(target, zoom = "city") {
   const lng = Number(target.lng ?? CITY_COORDS[target.city]?.lng ?? 78.9629) * Math.PI / 180;
   const lat = Number(target.lat ?? CITY_COORDS[target.city]?.lat ?? 22.5);
   const targetY = -lng - Math.PI / 2;
-  const targetX = -(lat * Math.PI / 180) * 0.9;
+  const targetX = Math.max(-0.5, Math.min(0.5, lat * Math.PI / 180));
   const cameraZ = { national: 4.4, state: 3.7, city: 3.05, street: 2.85 }[zoom] || 4.4;
   if (window.gsap) {
     gsap.killTweensOf([earthState.globe.rotation, earthState.camera.position]);
@@ -1831,7 +1831,12 @@ function flyToIndia() {
   if (!earthState.globe) return;
   const indiaLng = 78.9629 * Math.PI / 180;
   const targetY = -indiaLng - Math.PI / 2;
-  const destination = 4.4;
+  const canvas = document.getElementById("earthCanvas");
+  const rect = canvas?.getBoundingClientRect();
+  const aspect = rect?.width && rect?.height ? rect.width / rect.height : 1;
+  const verticalHalfFov = (45 * Math.PI / 180) / 2;
+  const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * Math.max(aspect, 0.01));
+  const destination = 2.12 / Math.tan(Math.min(verticalHalfFov, horizontalHalfFov)) * 1.12;
   if (window.gsap) {
     gsap.to(earthState.globe.rotation, { y: targetY, x: 0.12, duration: 1.3, ease: "power3.inOut" });
     gsap.to(earthState.camera.position, { z: destination, duration: 1.3, ease: "power3.inOut" });
@@ -2031,6 +2036,10 @@ function drawRoute() {
 function wireEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   document.getElementById("menuButton").addEventListener("click", () => document.body.classList.toggle("menu-open"));
+  document.getElementById("mobileBackdrop").addEventListener("click", () => document.body.classList.remove("menu-open"));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") document.body.classList.remove("menu-open");
+  });
   document.getElementById("themeToggle").addEventListener("click", () => document.body.classList.toggle("soft-mode"));
   document.getElementById("openLoginBtn").addEventListener("click", () => openAuthModal("login"));
   document.getElementById("openRegisterBtn").addEventListener("click", () => openAuthModal("register"));

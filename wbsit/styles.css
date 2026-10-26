@@ -170,7 +170,10 @@ input:focus, select:focus {
     0 0 48px rgba(255, 48, 79, 0.12);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
+  overflow-y: auto;
 }
+
+.mobile-backdrop { display: none; }
 
 .brand {
   display: flex;
@@ -2034,11 +2037,25 @@ table td {
 }
 
 @media (max-width: 820px) {
+  body { overflow-x: hidden; }
   .sidebar {
     inset: 10px auto 10px 10px;
+    width: min(290px, calc(100vw - 34px));
+    max-height: calc(100vh - 20px);
     border: 1px solid rgba(255,255,255,.1);
     border-radius: 12px;
   }
+  .mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: block;
+    background: rgba(0,0,0,.62);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  body.menu-open .mobile-backdrop { opacity: 1; pointer-events: auto; }
   .app-shell { margin-left: 0; }
   .topbar { padding: 12px; }
   main { padding: 0 12px 92px; }
@@ -2052,5 +2069,12 @@ table td {
   .earth-stage,
   #earthCanvas {
     min-height: 430px;
+  }
+  main { padding-bottom: 132px; }
+  .floating-finder {
+    right: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 28px);
+    white-space: normal;
   }
 }

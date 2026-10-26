@@ -301,8 +301,8 @@
       <section class="view" id="settingsView">
         <div class="section-head"><h1>Settings</h1></div>
         <form class="settings-form glass-panel">
-          <label>Admin Name<input id="adminNameSetting" value="Admin"></label>
-          <label>Notification Email<input id="emailSetting" value="admin@eblood.local"></label>
+          <label>Profile Name<input id="adminNameSetting" autocomplete="name"></label>
+          <label>Notification Email<input id="emailSetting" type="email" autocomplete="email"></label>
           <label>Low Stock Threshold<input id="thresholdSetting" type="number" value="60"></label>
           <label><span>Demo Inventory Disclosure</span><select id="demoDisclosure"><option>Visible</option><option>Compact</option></select></label>
           <button class="primary-button" type="button" id="saveSettings">Save Settings</button>
